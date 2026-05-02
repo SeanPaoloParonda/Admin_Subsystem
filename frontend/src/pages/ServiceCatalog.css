@@ -109,16 +109,19 @@
   padding: 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
 }
 
 .logout-btn {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.85);
   cursor: pointer;
-  padding: 8px;
+  padding: 10px 14px;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -127,44 +130,40 @@
 }
 
 .logout-btn:hover {
-  background-color: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .profile-info {
+  width: 100%;
   display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.profile-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #1a9bb6, #148a9e);
-  color: #fff;
-  display: flex;
-  align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: 0.9rem;
 }
 
 .profile-details {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 4px;
 }
 
 .profile-name {
   color: rgba(255, 255, 255, 0.9);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 600;
 }
 
-.profile-email {
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 0.7rem;
+.profile-role {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.profile-email,
+.profile-username {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .logo-text {

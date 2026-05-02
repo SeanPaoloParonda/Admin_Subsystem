@@ -1,5 +1,6 @@
 /* Use Inter font globally */
-body, html, #root, .login-bg, .login-card, .login-logo, .login-form, .login-form input, .login-form button, .login-error, .login-forgot, .login-subtitle {
+body, html, #root, .login-bg, .login-card, .login-logo, .login-form, 
+.login-form input, .login-form button, .login-error, .login-forgot, .login-subtitle {
   font-family: 'Inter', Arial, Helvetica, sans-serif !important;
 }
 
@@ -100,15 +101,22 @@ body, html, #root, .login-bg, .login-card, .login-logo, .login-form, .login-form
   border-color: #1a9bb6;
 }
 
+/* Forgot password link styled as button */
+.link-button {
+  background: none;
+  border: none;
+  color: #1a9bb6;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0;
+}
+
 .login-forgot {
   text-align: right;
   margin-bottom: 1rem;
 }
-.login-forgot a {
-  color: #1a9bb6;
-  text-decoration: none;
-  font-size: 0.95rem;
-}
+
 .login-error {
   color: #d32f2f;
   background: #ffeaea;
@@ -118,6 +126,7 @@ body, html, #root, .login-bg, .login-card, .login-logo, .login-form, .login-form
   text-align: center;
   font-size: 0.98rem;
 }
+
 .login-form button {
   width: 100%;
   background: #1a9bb6;

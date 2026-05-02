@@ -1,5 +1,6 @@
 const User = require('../models/user');
 const AuditLog = require('../models/auditLog');
+const Role = require('../models/role');
 const { hashPassword } = require('../utils/passwordUtils');
 
 /**
@@ -7,26 +8,50 @@ const { hashPassword } = require('../utils/passwordUtils');
  */
 const getAllUsers = async (req, res) => {
   try {
-    const { page = 1, limit = 10, role, status } = req.query;
-    const offset = (page - 1) * limit;
+    const { page, limit, role_id, status, subsystem } = req.query;
 
     const where = {};
-    if (role) where.role = role;
+    if (role_id) where.role_id = role_id;
     if (status) where.status = status;
 
-    const users = await User.findAndCountAll({
+    // Build role include — filter by subsystem if provided
+    const roleInclude = {
+      model: Role,
+      attributes: ['role_id', 'name', 'subsystem'],
+      ...(subsystem ? { where: { subsystem } } : {})
+    };
+
+    // If pagination params are provided use them, otherwise return all users
+    if (page && limit) {
+      const pageNum = parseInt(page);
+      const limitNum = parseInt(limit);
+      const offset = (pageNum - 1) * limitNum;
+
+      const users = await User.findAndCountAll({
+        where,
+        include: [roleInclude],
+        attributes: { exclude: ['pwd_hash'] },
+        limit: limitNum,
+        offset
+      });
+
+      return res.json({
+        users: users.rows,
+        total: users.count,
+        page: pageNum,
+        totalPages: Math.ceil(users.count / limitNum)
+      });
+    }
+
+    // No pagination — return all users
+    const users = await User.findAll({
       where,
+      include: [roleInclude],
       attributes: { exclude: ['pwd_hash'] },
-      limit: parseInt(limit),
-      offset: parseInt(offset)
+      order: [['created_at', 'DESC']]
     });
 
-    res.json({
-      users: users.rows,
-      total: users.count,
-      page: parseInt(page),
-      totalPages: Math.ceil(users.count / limit)
-    });
+    res.json({ users });
   } catch (error) {
     console.error('Get all users error:', error);
     res.status(500).json({ message: 'Server error fetching users' });
@@ -40,12 +65,11 @@ const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
     const user = await User.findByPk(id, {
+      include: [{ model: Role, attributes: ['role_id', 'name', 'subsystem'] }],
       attributes: { exclude: ['pwd_hash'] }
     });
 
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
     res.json(user);
   } catch (error) {
@@ -59,42 +83,37 @@ const getUserById = async (req, res) => {
  */
 const createUser = async (req, res) => {
   try {
-    const { staff_id, username, password, role, status } = req.body;
+    const { staff_id, first_name, last_name, username, password, role_id, status } = req.body;
 
-    // Validate required fields
-    if (!staff_id || !username || !password || !role) {
-      return res.status(400).json({ message: 'staff_id, username, password, and role are required' });
+    if (!username || !password || !role_id) {
+      return res.status(400).json({ message: 'username, password, and role_id are required' });
     }
 
-    // Check for duplicate username
     const existingUser = await User.findOne({ where: { username } });
-    if (existingUser) {
-      return res.status(400).json({ message: 'Username already exists' });
+    if (existingUser) return res.status(400).json({ message: 'Username already exists' });
+
+    // Only check staff_id uniqueness if one was provided
+    if (staff_id) {
+      const existingStaff = await User.findOne({ where: { staff_id } });
+      if (existingStaff) return res.status(400).json({ message: 'Staff ID already linked to another account' });
     }
 
-    // Check for duplicate staff_id
-    const existingStaff = await User.findOne({ where: { staff_id } });
-    if (existingStaff) {
-      return res.status(400).json({ message: 'Staff ID already linked to another account' });
-    }
-
-    // Hash password
     const pwd_hash = await hashPassword(password);
 
-    // Create user
     const user = await User.create({
-      staff_id,
+      staff_id: staff_id || null,
+      first_name,
+      last_name,
       username,
       pwd_hash,
-      role,
+      role_id,
       status: status || 'active'
     });
 
-    // Log user creation
     await AuditLog.create({
       user_id: req.user.user_id,
       action_type: 'USER_CREATED',
-      details: `New user created: ${username} with role: ${role}`,
+      details: `New user created: ${username} with role_id: ${role_id}`,
       ip_addr: req.ip || req.connection.remoteAddress
     });
 
@@ -103,8 +122,10 @@ const createUser = async (req, res) => {
       user: {
         user_id: user.user_id,
         staff_id: user.staff_id,
+        first_name: user.first_name,
+        last_name: user.last_name,
         username: user.username,
-        role: user.role,
+        role_id: user.role_id,
         status: user.status,
         created_at: user.createdAt
       }
@@ -121,47 +142,59 @@ const createUser = async (req, res) => {
 const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { staff_id, username, role, status } = req.body;
+    const { staff_id, first_name, last_name, username, password, role_id, status } = req.body;
 
-    const user = await User.findByPk(id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
+    const user = await User.findByPk(id, { include: [Role] });
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Prevent deletion of Super Admin by non-Super Admin
-    if (user.role === 'Super Admin' && req.user.role !== 'Super Admin') {
+    // Prevent modification of Super Admin by non-Super Admin
+    const role = await Role.findByPk(user.role_id);
+    if (role?.name === 'Super Admin' && req.user.role !== 'Super Admin') {
       return res.status(403).json({ message: 'Cannot modify Super Admin account' });
     }
 
-    // Check for duplicate username (if changing)
     if (username && username !== user.username) {
       const existingUser = await User.findOne({ where: { username } });
-      if (existingUser) {
-        return res.status(400).json({ message: 'Username already exists' });
-      }
+      if (existingUser) return res.status(400).json({ message: 'Username already exists' });
     }
 
-    // Check for duplicate staff_id (if changing)
     if (staff_id && staff_id !== user.staff_id) {
       const existingStaff = await User.findOne({ where: { staff_id } });
-      if (existingStaff) {
-        return res.status(400).json({ message: 'Staff ID already linked to another account' });
-      }
+      if (existingStaff) return res.status(400).json({ message: 'Staff ID already linked to another account' });
     }
 
-    // Update user fields
-    await user.update({
-      staff_id: staff_id || user.staff_id,
-      username: username || user.username,
-      role: role || user.role,
-      status: status || user.status
-    });
+    const updates = {
+      staff_id:   staff_id  !== undefined ? (staff_id || null) : user.staff_id,
+      first_name: first_name || user.first_name,
+      last_name:  last_name  || user.last_name,
+      username:   username   || user.username,
+      role_id:    role_id    || user.role_id,
+      status:     status     || user.status,
+    };
 
-    // Log user update
+    // Hash new password if provided
+    if (password && password.trim()) {
+      updates.pwd_hash = await hashPassword(password);
+    }
+
+    await user.update(updates);
+
+    // Determine specific action type
+    let actionType = 'USER_UPDATED';
+    let actionDetails = `User ${user.username} updated by ${req.user.username}`;
+
+    if (status === 'active' && user.status !== 'active') {
+      actionType = 'USER_ACTIVATED';
+      actionDetails = `User ${user.username} activated by ${req.user.username}`;
+    } else if (password && password.trim()) {
+      actionType = 'USER_PASSWORD_CHANGED';
+      actionDetails = `Password for user ${user.username} changed via edit by ${req.user.username}`;
+    }
+
     await AuditLog.create({
       user_id: req.user.user_id,
-      action_type: 'USER_UPDATED',
-      details: `User ${user.username} updated by ${req.user.username}`,
+      action_type: actionType,
+      details: actionDetails,
       ip_addr: req.ip || req.connection.remoteAddress
     });
 
@@ -170,8 +203,10 @@ const updateUser = async (req, res) => {
       user: {
         user_id: user.user_id,
         staff_id: user.staff_id,
+        first_name: user.first_name,
+        last_name: user.last_name,
         username: user.username,
-        role: user.role,
+        role_id: user.role_id,
         status: user.status
       }
     });
@@ -182,34 +217,29 @@ const updateUser = async (req, res) => {
 };
 
 /**
- * Delete (deactivate) user
+ * Deactivate user
  */
 const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
+    const user = await User.findByPk(id, { include: [Role] });
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const user = await User.findByPk(id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    const role = await Role.findByPk(user.role_id);
+    if (role?.name === 'Super Admin') {
+      return res.status(403).json({ message: 'Cannot deactivate Super Admin account' });
     }
 
-    // Prevent deletion of Super Admin
-    if (user.role === 'Super Admin') {
-      return res.status(403).json({ message: 'Cannot delete Super Admin account' });
-    }
-
-    // Prevent self-deletion
+    // Prevent deactivating your own account
     if (user.user_id === req.user.user_id) {
-      return res.status(403).json({ message: 'Cannot delete your own account' });
+      return res.status(403).json({ message: 'You cannot deactivate your own account' });
     }
 
-    // Deactivate instead of hard delete
     await user.update({ status: 'inactive' });
 
-    // Log user deletion
     await AuditLog.create({
       user_id: req.user.user_id,
-      action_type: 'USER_DELETED',
+      action_type: 'USER_DEACTIVATED',
       details: `User ${user.username} deactivated by ${req.user.username}`,
       ip_addr: req.ip || req.connection.remoteAddress
     });
@@ -229,20 +259,14 @@ const changePassword = async (req, res) => {
     const { id } = req.params;
     const { newPassword } = req.body;
 
-    if (!newPassword) {
-      return res.status(400).json({ message: 'New password is required' });
-    }
+    if (!newPassword) return res.status(400).json({ message: 'New password is required' });
 
     const user = await User.findByPk(id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Hash new password
     const pwd_hash = await hashPassword(newPassword);
     await user.update({ pwd_hash });
 
-    // Log password change
     await AuditLog.create({
       user_id: req.user.user_id,
       action_type: 'PASSWORD_CHANGED',

@@ -1,13 +1,20 @@
 const express = require('express');
-const router = express.Router();
-const { login, logout, refreshToken } = require('../controllers/authController');
+const { login, logout, refreshToken, verifyToken } = require('../controllers/authController');
+const { subsystemLogin } = require('../controllers/subsystemAuthController');
 const { protect } = require('../middleware/authMiddleware');
 
-// Public routes
+const router = express.Router();
+
 router.post('/login', login);
 router.post('/refresh', refreshToken);
-
-// Protected routes
+router.get('/verify', protect, verifyToken);
 router.post('/logout', protect, logout);
+
+/**
+ * Cross-subsystem authentication endpoint
+ * Other subsystems POST { username, password } with X-Subsystem-Key header
+ * Returns JWT + permissions for the authenticated user
+ */
+router.post('/subsystem-login', subsystemLogin);
 
 module.exports = router;

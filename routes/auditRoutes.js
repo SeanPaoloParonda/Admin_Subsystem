@@ -7,16 +7,23 @@ const {
   getRecentActivity, 
   exportLogs 
 } = require('../controllers/auditController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { ingestAuditLogs } = require('../controllers/subsystemAuditController');
+const { protect, requirePermission } = require('../middleware/authMiddleware');
 
-// All routes require authentication
+/**
+ * Cross-subsystem audit ingest — no JWT required, uses X-Subsystem-Key instead
+ * Other subsystems POST their action logs here so we have a central audit trail
+ */
+router.post('/ingest', ingestAuditLogs);
+
+// All routes below require authentication
 router.use(protect);
 
-// Admin and Super Admin can view audit logs
-router.get('/', authorize('Admin', 'Super Admin'), getAllLogs);
-router.get('/export', authorize('Admin', 'Super Admin'), exportLogs);
-router.get('/recent', authorize('Admin', 'Super Admin'), getRecentActivity);
-router.get('/user/:userId', authorize('Admin', 'Super Admin'), getUserLogs);
-router.get('/:id', authorize('Admin', 'Super Admin'), getLogById);
+// Any authenticated user with View permission can read audit logs
+router.get('/', requirePermission('View'), getAllLogs);
+router.get('/export', requirePermission('View'), exportLogs);
+router.get('/recent', requirePermission('View'), getRecentActivity);
+router.get('/user/:userId', requirePermission('View'), getUserLogs);
+router.get('/:id', requirePermission('View'), getLogById);
 
 module.exports = router;

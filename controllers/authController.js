@@ -1,28 +1,53 @@
 const User = require('../models/user');
+const Role = require('../models/role');
 const AuditLog = require('../models/auditLog');
 const jwt = require('jsonwebtoken');
 const { comparePassword } = require('../utils/passwordUtils');
 const { generateToken, generateRefreshToken } = require('../utils/tokenUtils');
 
 /**
- * Login user and generate access token
+ * Login user and generate access + refresh tokens
  */
 const login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Validate input
     if (!username || !password) {
       return res.status(400).json({ message: 'Username and password are required' });
     }
 
-    // Find user by username
-    const user = await User.findOne({ where: { username } });
+// Try to find user without Role include first
+    let user = await User.findOne({
+      where: { username }
+    });
+
+    // If user has role_id, try to get role name separately
+    let roleName = 'User';
+    let roleSubsystem = 'Admin';
+    let rolePermissions = [];
+    if (user && user.role_id) {
+      try {
+        const role = await Role.findByPk(user.role_id, {
+          attributes: ['name', 'subsystem'],
+          include: [{
+            model: require('../models/permission'),
+            through: { attributes: [] },
+            attributes: ['action']
+          }]
+        });
+        if (role) {
+          roleName = role.name;
+          roleSubsystem = role.subsystem;
+          rolePermissions = (role.Permissions || []).map(p => p.action);
+        }
+      } catch (roleErr) {
+        console.error('Error fetching role:', roleErr);
+      }
+    }
 
     if (!user) {
-      // Log failed login attempt
       await AuditLog.create({
-        user_id: null,
+        user_id: '00000000-0000-0000-0000-000000000000', // System placeholder for unknown user
         action_type: 'LOGIN_FAILED',
         details: `Failed login attempt for username: ${username}`,
         ip_addr: req.ip || req.connection.remoteAddress
@@ -30,8 +55,8 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
-    // Check if user is active
-    if (user.status !== 'active') {
+    // Check status
+    if (!user.status || user.status !== 'active') {
       await AuditLog.create({
         user_id: user.user_id,
         action_type: 'LOGIN_FAILED',
@@ -53,17 +78,24 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
-    // Generate tokens
+// Use the roleName and roleSubsystem we fetched above
     const payload = {
       user_id: user.user_id,
       username: user.username,
-      role: user.role
+      role_id: user.role_id,
+      role: roleName,
+      subsystem: roleSubsystem,
+      permissions: rolePermissions   // e.g. ['Create', 'View', 'Patch']
     };
+
+    console.log('Login payload subsystem:', roleSubsystem);
 
     const accessToken = generateToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
-    // Log successful login
+    // Update last_login timestamp
+    await user.update({ last_login: new Date() });
+
     await AuditLog.create({
       user_id: user.user_id,
       action_type: 'LOGIN_SUCCESS',
@@ -78,7 +110,10 @@ const login = async (req, res) => {
       user: {
         user_id: user.user_id,
         username: user.username,
-        role: user.role,
+        role_id: user.role_id,
+        role: roleName,
+        subsystem: roleSubsystem,
+        permissions: rolePermissions,
         status: user.status
       }
     });
@@ -89,13 +124,12 @@ const login = async (req, res) => {
 };
 
 /**
- * Logout user and log the action
+ * Logout user
  */
 const logout = async (req, res) => {
   try {
     const userId = req.user.user_id;
 
-    // Log logout action
     await AuditLog.create({
       user_id: userId,
       action_type: 'LOGOUT',
@@ -111,22 +145,22 @@ const logout = async (req, res) => {
 };
 
 /**
- * Refresh access token using refresh token
+ * Refresh access token
  */
 const refreshToken = async (req, res) => {
   try {
     const { refreshToken: token } = req.body;
+    if (!token) return res.status(400).json({ message: 'Refresh token is required' });
 
-    if (!token) {
-      return res.status(400).json({ message: 'Refresh token is required' });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret_change_in_production';
+    const decoded = jwt.verify(token, jwtRefreshSecret);
 
     const newAccessToken = generateToken({
       user_id: decoded.user_id,
       username: decoded.username,
-      role: decoded.role
+      role_id: decoded.role_id,
+      role: decoded.role,
+      subsystem: decoded.subsystem
     });
 
     res.json({ accessToken: newAccessToken });
@@ -136,4 +170,23 @@ const refreshToken = async (req, res) => {
   }
 };
 
-module.exports = { login, logout, refreshToken };
+/**
+ * Verify access token
+ */
+const verifyToken = async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ message: 'No token provided' });
+
+    const token = authHeader.split(' ')[1];
+    const jwtSecret = process.env.JWT_SECRET || 'fallback_jwt_secret_change_in_production';
+    const decoded = jwt.verify(token, jwtSecret);
+
+    res.json({ valid: true, user: decoded });
+  } catch (error) {
+    console.error('Verify error:', error);
+    res.status(401).json({ valid: false, message: 'Invalid or expired token' });
+  }
+};
+
+module.exports = { login, logout, refreshToken, verifyToken };

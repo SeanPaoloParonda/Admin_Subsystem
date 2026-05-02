@@ -1,4 +1,5 @@
 const User = require('../models/user');
+const Role = require('../models/role');
 const { hashPassword } = require('../utils/passwordUtils');
 const sequelize = require('../config/db');
 
@@ -14,20 +15,26 @@ const seedAdmin = async () => {
       process.exit(0);
     }
 
+    // Find the Admin role in the DB
+    const adminRole = await Role.findOne({ where: { name: 'Admin', subsystem: 'Admin' } });
+    if (!adminRole) {
+      console.error('❌ Admin role not found in the role table. Create it first.');
+      process.exit(1);
+    }
+
     const pwd_hash = await hashPassword('admin123');
 
-    const admin = await User.create({
-      staff_id: 'ADM001',
+    await User.create({
       username: 'admin',
       pwd_hash,
-      role: 'Admin',
+      role_id: adminRole.role_id,
       status: 'active'
     });
 
     console.log('✅ Admin user created:');
     console.log('   Username: admin');
     console.log('   Password: admin123');
-    console.log('   Role: Admin');
+    console.log('   Role ID:', adminRole.role_id);
     process.exit(0);
   } catch (err) {
     console.error('❌ Error:', err.message);
@@ -36,4 +43,3 @@ const seedAdmin = async () => {
 };
 
 seedAdmin();
-

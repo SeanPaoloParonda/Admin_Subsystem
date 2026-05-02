@@ -11,19 +11,18 @@ const getAllLogs = async (req, res) => {
     const offset = (page - 1) * limit;
 
     const where = {};
-
     if (user_id) where.user_id = user_id;
     if (action_type) where.action_type = action_type;
 
     if (startDate || endDate) {
-      where.timestamp = {};
-      if (startDate) where.timestamp[Op.gte] = new Date(startDate);
-      if (endDate) where.timestamp[Op.lte] = new Date(endDate);
+      where.created_at = {};
+      if (startDate) where.created_at[Op.gte] = new Date(startDate);
+      if (endDate) where.created_at[Op.lte] = new Date(endDate);
     }
 
     const logs = await AuditLog.findAndCountAll({
       where,
-      order: [['timestamp', 'DESC']],
+      order: [['created_at', 'DESC']],
       limit: parseInt(limit),
       offset: parseInt(offset)
     });
@@ -48,9 +47,7 @@ const getLogById = async (req, res) => {
     const { id } = req.params;
     const log = await AuditLog.findByPk(id);
 
-    if (!log) {
-      return res.status(404).json({ message: 'Audit log not found' });
-    }
+    if (!log) return res.status(404).json({ message: 'Audit log not found' });
 
     res.json(log);
   } catch (error) {
@@ -70,7 +67,7 @@ const getUserLogs = async (req, res) => {
 
     const logs = await AuditLog.findAndCountAll({
       where: { user_id: userId },
-      order: [['timestamp', 'DESC']],
+      order: [['created_at', 'DESC']],
       limit: parseInt(limit),
       offset: parseInt(offset)
     });
@@ -95,7 +92,7 @@ const getRecentActivity = async (req, res) => {
     const { limit = 10 } = req.query;
 
     const logs = await AuditLog.findAll({
-      order: [['timestamp', 'DESC']],
+      order: [['created_at', 'DESC']],
       limit: parseInt(limit)
     });
 
@@ -131,22 +128,20 @@ const exportLogs = async (req, res) => {
     const { startDate, endDate, user_id, action_type } = req.query;
 
     const where = {};
-
     if (user_id) where.user_id = user_id;
     if (action_type) where.action_type = action_type;
 
     if (startDate || endDate) {
-      where.timestamp = {};
-      if (startDate) where.timestamp[Op.gte] = new Date(startDate);
-      if (endDate) where.timestamp[Op.lte] = new Date(endDate);
+      where.created_at = {};
+      if (startDate) where.created_at[Op.gte] = new Date(startDate);
+      if (endDate) where.created_at[Op.lte] = new Date(endDate);
     }
 
     const logs = await AuditLog.findAll({
       where,
-      order: [['timestamp', 'DESC']]
+      order: [['created_at', 'DESC']]
     });
 
-    // Log export action
     await AuditLog.create({
       user_id: req.user.user_id,
       action_type: 'AUDIT_EXPORT',

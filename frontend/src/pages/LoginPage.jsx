@@ -1,27 +1,42 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './LoginPage.css';
 
 const LoginPage = () => {
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState('');   // ✅ use username
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/login', {
+      console.log('LoginPage: Attempting login...');
+      const res = await fetch('/admin/api/auth/login', {   // backend expects username
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username, password })       // ✅ send username
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Login failed');
+
+      // inside handleSubmit success block
+      console.log('LoginPage: Login successful, storing tokens...');
+      console.log('LoginPage: accessToken:', data.accessToken ? 'present' : 'missing');
+      console.log('LoginPage: refreshToken:', data.refreshToken ? 'present' : 'missing');
       localStorage.setItem('accessToken', data.accessToken);
-      window.location.href = '/dashboard';
+      localStorage.setItem('refreshToken', data.refreshToken);
+      localStorage.setItem('user', JSON.stringify(data.user)); // store user info
+      
+      console.log('LoginPage: Tokens stored, navigating to dashboard...');
+      // Use react-router navigation instead of window.location.href
+      navigate('/dashboard');
+
     } catch (err) {
+      console.error('LoginPage: Login error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -41,7 +56,7 @@ const LoginPage = () => {
             <img src="/profile.png" alt="User" className="input-icon" />
             <input
               type="text"
-              placeholder="Username"
+              placeholder="Username"                 // ✅ label matches DB
               value={username}
               onChange={e => setUsername(e.target.value)}
               required
@@ -59,7 +74,13 @@ const LoginPage = () => {
             />
           </div>
           <div className="login-forgot">
-            <a href="#">Forgot Password?</a>
+            <button 
+              type="button" 
+              className="link-button"
+              onClick={() => alert('Forgot password flow coming soon')}
+            >
+              Forgot Password?
+            </button>
           </div>
           {error && <div className="login-error">{error}</div>}
           <button type="submit" disabled={loading}>

@@ -18,7 +18,8 @@ const generateToken = (payload, expiresIn = '24h') => {
  */
 const verifyToken = (token) => {
   try {
-    return jwt.verify(token, process.env.JWT_SECRET);
+    const secret = process.env.JWT_SECRET || 'fallback_jwt_secret_change_in_production';
+    return jwt.verify(token, secret);
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
       console.error('Token verification failed:', error.message);

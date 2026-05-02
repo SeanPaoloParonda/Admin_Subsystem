@@ -7,16 +7,17 @@ const {
   updateService, 
   deleteService 
 } = require('../controllers/referenceController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, enforceSubsystem, requirePermission } = require('../middleware/authMiddleware');
 
-// All routes require authentication
+// All routes require authentication + Admin subsystem enforcement
 router.use(protect);
+router.use(enforceSubsystem('Admin'));
 
-// Reference data routes (Super Admin only for CRUD)
-router.get('/', getAllServices);
-router.get('/:id', getServiceById);
-router.post('/', authorize('Super Admin'), createService);
-router.put('/:id', authorize('Super Admin'), updateService);
-router.delete('/:id', authorize('Super Admin'), deleteService);
+// Any authenticated user with the right permission can access
+router.get('/', requirePermission('View'), getAllServices);
+router.get('/:id', requirePermission('View'), getServiceById);
+router.post('/', requirePermission('Create'), createService);
+router.patch('/:id', requirePermission('Patch'), updateService);
+router.patch('/:id/deactivate', requirePermission('Patch'), deleteService);
 
 module.exports = router;
