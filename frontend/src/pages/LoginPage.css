@@ -1,0 +1,170 @@
+/* Use Inter font globally */
+body, html, #root, .login-bg, .login-card, .login-logo, .login-form, 
+.login-form input, .login-form button, .login-error, .login-forgot, .login-subtitle {
+  font-family: 'Inter', Arial, Helvetica, sans-serif !important;
+}
+
+/* Background image and overlay */
+.login-bg {
+  min-height: 100vh;
+  background-position: center center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.login-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.7);
+  z-index: 1;
+}
+
+/* Centered card */
+.login-card {
+  position: relative;
+  z-index: 2;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.12);
+  padding: 2.5rem 1.1rem 2rem 1.1rem;
+  min-width: 350px;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.login-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+.login-logo img {
+  margin-bottom: 0.5rem;
+}
+.login-logo h2 {
+  margin: 0;
+  font-weight: 700;
+  color: #1a3d5d;
+  font-size: 2rem;
+}
+.login-subtitle {
+  color: #888;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.login-form {
+  width: 100%;
+  max-width: 310px;
+  margin: 0 auto;
+}
+
+/* Input group with icon */
+.input-group {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 1rem;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  background: #fff;
+  padding: 0 0.75rem;
+  transition: border-color 0.2s;
+}
+.input-group:focus-within {
+  border-color: #1a9bb6;
+}
+.input-icon {
+  width: 20px;
+  height: 20px;
+  opacity: 0.6;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+.login-form input {
+  flex: 1;
+  padding: 0.75rem 0;
+  border: none;
+  border-radius: 0;
+  font-size: 1rem;
+  outline: none;
+  background: transparent;
+}
+.login-form input:focus {
+  border-color: #1a9bb6;
+}
+
+/* Forgot password link styled as button */
+.link-button {
+  background: none;
+  border: none;
+  color: #1a9bb6;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0;
+}
+
+.login-forgot {
+  text-align: right;
+  margin-bottom: 1rem;
+}
+
+.login-error {
+  color: #d32f2f;
+  background: #ffeaea;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+  font-size: 0.98rem;
+}
+
+.login-form button {
+  width: 100%;
+  background: #1a9bb6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  box-sizing: border-box;
+  margin-bottom: 1.5rem;
+}
+.login-form button:disabled {
+  background: #b2e0ea;
+  cursor: not-allowed;
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 500px) {
+  .login-card {
+    min-width: 90vw;
+    padding: 1.5rem 0.5rem;
+  }
+}
