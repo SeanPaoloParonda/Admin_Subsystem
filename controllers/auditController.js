@@ -49,7 +49,7 @@ const getAllLogs = async (req, res) => {
       include: [{
         model: User,
         as: 'user',
-        attributes: ['username', 'first_name', 'last_name', 'staff_id'],
+        attributes: ['username', 'first_name', 'last_name'],
         required: subsystem ? true : false,  // INNER JOIN when filtering by subsystem
         include: [roleInclude]
       }]

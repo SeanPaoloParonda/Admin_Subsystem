@@ -78,6 +78,17 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
+    // Block non-Admin subsystem users from logging into the Admin panel
+    if (roleSubsystem !== 'Admin') {
+      await AuditLog.create({
+        user_id: user.user_id,
+        action_type: 'LOGIN_FAILED',
+        details: `User ${username} (subsystem: ${roleSubsystem}) attempted to log into Admin panel`,
+        ip_addr: req.ip || req.connection.remoteAddress
+      });
+      return res.status(403).json({ message: 'Access denied: this account does not belong to the Admin subsystem' });
+    }
+
 // Use the roleName and roleSubsystem we fetched above
     const payload = {
       user_id: user.user_id,

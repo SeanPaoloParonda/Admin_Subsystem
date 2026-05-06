@@ -346,3 +346,33 @@
 
 .sort-btn:hover { color: #1a9bb6; }
 .sort-icon { font-size: 0.9rem; color: #1a9bb6; }
+
+/* ── Source tabs ─────────────────────────────────────────────────────────── */
+.source-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 24px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 16px;
+}
+
+.source-tab {
+  padding: 8px 18px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #627d98;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.source-tab:hover { background: #f1f5f9; }
+
+.source-tab.active {
+  background: #1a9bb6;
+  color: #fff;
+  border-color: #1a9bb6;
+  font-weight: 600;
+}

@@ -17,7 +17,6 @@ const subsystemMap = [
 const emptyForm = {
   first_name: '',
   last_name: '',
-  staff_id: '',
   username: '',
   password: '',
   subsystem: '',
@@ -208,7 +207,6 @@ const UserManagementPage = () => {
         },
         // Password is sent plain — the backend hashes it with bcrypt before storing
         body: JSON.stringify({
-          staff_id: form.staff_id !== '' ? parseInt(form.staff_id) : null,
           first_name: form.first_name.trim(),
           last_name: form.last_name.trim(),
           username: form.username.trim(),
@@ -238,7 +236,6 @@ const UserManagementPage = () => {
     setEditForm({
       first_name: user.first_name || '',
       last_name:  user.last_name  || '',
-      staff_id:   user.staff_id   != null ? String(user.staff_id) : '',
       username:   user.username   || '',
       password:   '',
       subsystem,
@@ -303,7 +300,6 @@ const UserManagementPage = () => {
       const body = {
         first_name: editForm.first_name.trim(),
         last_name:  editForm.last_name.trim(),
-        staff_id:   editForm.staff_id !== '' ? parseInt(editForm.staff_id) : null,
         username:   editForm.username.trim(),
         role_id:    parseInt(editForm.role_id),
         status:     editForm.status,
@@ -568,7 +564,7 @@ const UserManagementPage = () => {
                       <td>
                         <div className="user-cell-name">
                           <span className="user-cell-title">{getUserDisplayName(user)}</span>
-                          <span className="user-cell-meta">{user.staff_id ? `STF-${String(user.staff_id).padStart(3, '0')}` : 'No Staff ID'}</span>
+                          <span className="user-cell-meta">{user.username}</span>
                         </div>
                       </td>
                       <td>{user.username}</td>
@@ -631,18 +627,6 @@ const UserManagementPage = () => {
                   value={form.last_name}
                   onChange={handleFormChange}
                   placeholder="Enter last name"
-                />
-              </div>
-
-              <div className="form-row">
-                <label htmlFor="staff_id">Staff ID:</label>
-                <input
-                  id="staff_id"
-                  name="staff_id"
-                  type="number"
-                  value={form.staff_id}
-                  onChange={handleFormChange}
-                  placeholder="e.g. 1001 (optional)"
                 />
               </div>
 

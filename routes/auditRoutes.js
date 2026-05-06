@@ -9,6 +9,7 @@ const {
   exportLogs 
 } = require('../controllers/auditController');
 const { ingestAuditLogs } = require('../controllers/subsystemAuditController');
+const { getCustomerAuditLogs } = require('../controllers/externalAuditController');
 const { protect, requirePermission } = require('../middleware/authMiddleware');
 
 /**
@@ -25,6 +26,7 @@ router.get('/', requirePermission('View'), getAllLogs);
 router.get('/export', requirePermission('View'), exportLogs);
 router.get('/recent', requirePermission('View'), getRecentActivity);
 router.get('/action-types', requirePermission('View'), getActionTypes);
+router.get('/external/customer', requirePermission('View'), getCustomerAuditLogs);
 router.get('/user/:userId', requirePermission('View'), getUserLogs);
 router.get('/:id', requirePermission('View'), getLogById);
 

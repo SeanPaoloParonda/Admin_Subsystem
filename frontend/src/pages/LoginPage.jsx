@@ -14,29 +14,20 @@ const LoginPage = () => {
     setError('');
     setLoading(true);
     try {
-      console.log('LoginPage: Attempting login...');
-      const res = await fetch('/admin/api/auth/login', {   // backend expects username
+      const res = await fetch('/admin/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })       // ✅ send username
+        body: JSON.stringify({ username, password })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Login failed');
 
-      // inside handleSubmit success block
-      console.log('LoginPage: Login successful, storing tokens...');
-      console.log('LoginPage: accessToken:', data.accessToken ? 'present' : 'missing');
-      console.log('LoginPage: refreshToken:', data.refreshToken ? 'present' : 'missing');
       localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
-      localStorage.setItem('user', JSON.stringify(data.user)); // store user info
-      
-      console.log('LoginPage: Tokens stored, navigating to dashboard...');
-      // Use react-router navigation instead of window.location.href
+      localStorage.setItem('user', JSON.stringify(data.user));
       navigate('/dashboard');
 
     } catch (err) {
-      console.error('LoginPage: Login error:', err);
       setError(err.message);
     } finally {
       setLoading(false);

@@ -83,7 +83,7 @@ const getUserById = async (req, res) => {
  */
 const createUser = async (req, res) => {
   try {
-    const { staff_id, first_name, last_name, username, password, role_id, status } = req.body;
+    const { first_name, last_name, username, password, role_id, status } = req.body;
 
     if (!username || !password || !role_id) {
       return res.status(400).json({ message: 'username, password, and role_id are required' });
@@ -92,16 +92,9 @@ const createUser = async (req, res) => {
     const existingUser = await User.findOne({ where: { username } });
     if (existingUser) return res.status(400).json({ message: 'Username already exists' });
 
-    // Only check staff_id uniqueness if one was provided
-    if (staff_id) {
-      const existingStaff = await User.findOne({ where: { staff_id } });
-      if (existingStaff) return res.status(400).json({ message: 'Staff ID already linked to another account' });
-    }
-
     const pwd_hash = await hashPassword(password);
 
     const user = await User.create({
-      staff_id: staff_id || null,
       first_name,
       last_name,
       username,
@@ -121,7 +114,6 @@ const createUser = async (req, res) => {
       message: 'User created successfully',
       user: {
         user_id: user.user_id,
-        staff_id: user.staff_id,
         first_name: user.first_name,
         last_name: user.last_name,
         username: user.username,
@@ -142,7 +134,7 @@ const createUser = async (req, res) => {
 const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { staff_id, first_name, last_name, username, password, role_id, status } = req.body;
+    const { first_name, last_name, username, password, role_id, status } = req.body;
 
     const user = await User.findByPk(id, { include: [Role] });
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -158,13 +150,7 @@ const updateUser = async (req, res) => {
       if (existingUser) return res.status(400).json({ message: 'Username already exists' });
     }
 
-    if (staff_id && staff_id !== user.staff_id) {
-      const existingStaff = await User.findOne({ where: { staff_id } });
-      if (existingStaff) return res.status(400).json({ message: 'Staff ID already linked to another account' });
-    }
-
     const updates = {
-      staff_id:   staff_id  !== undefined ? (staff_id || null) : user.staff_id,
       first_name: first_name || user.first_name,
       last_name:  last_name  || user.last_name,
       username:   username   || user.username,
@@ -205,7 +191,6 @@ const updateUser = async (req, res) => {
       message: 'User updated successfully',
       user: {
         user_id: user.user_id,
-        staff_id: user.staff_id,
         first_name: user.first_name,
         last_name: user.last_name,
         username: user.username,

@@ -27,11 +27,11 @@ const formatTimestamp = (ts) => {
 
 const getUserDisplay = (log) => {
   if (!log.user) return { name: 'System', sub: log.user_id?.slice(0, 8) + '...' };
-  const { first_name, last_name, username, staff_id, Role: role } = log.user;
+  const { first_name, last_name, username, Role: role, actorRole } = log.user;
   const full = [first_name, last_name].filter(Boolean).join(' ');
   return {
-    name: full || username,
-    sub: staff_id ? `STF-${String(staff_id).padStart(3, '0')}` : (role?.subsystem || username)
+    name: full || username || 'Unknown',
+    sub: actorRole || role?.subsystem || username || ''
   };
 };
 
@@ -53,6 +53,10 @@ const AuditLogs = () => {
   const [endDate, setEndDate] = useState('');
   const [sortOrder, setSortOrder] = useState('DESC');
   const [actionTypes, setActionTypes] = useState([]);
+  const [logSource, setLogSource] = useState('internal'); // 'internal' | 'customer'
+
+  // External logs stored separately so client-side filters work on full dataset
+  const [allExternalLogs, setAllExternalLogs] = useState([]);
 
   // Detail modal
   const [selectedLog, setSelectedLog] = useState(null);
@@ -64,28 +68,43 @@ const AuditLogs = () => {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({
-        page: currentPage,
-        limit: LIMIT,
-        sortOrder,
-        ...(actionType && { action_type: actionType }),
-        ...(subsystem  && { subsystem }),
-        ...(startDate  && { startDate }),
-        ...(endDate    && { endDate }),
-      });
+      let url, data;
 
-      const res = await fetch(`/admin/api/audit?${params}`, { headers });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setLogs(data.logs || []);
-      setTotal(data.total || 0);
-      setTotalPages(data.totalPages || 1);
+      if (logSource === 'customer') {
+        // Fetch all from Customer Support external API — no server-side pagination
+        const res = await fetch('/admin/api/audit/external/customer', { headers });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const all = data.logs || [];
+        setAllExternalLogs(all);
+        // total/pages handled by filtered display below
+        setTotal(all.length);
+        setTotalPages(1);
+        setLogs(all);
+      } else {
+        // Fetch internal logs
+        const params = new URLSearchParams({
+          page: currentPage,
+          limit: LIMIT,
+          sortOrder,
+          ...(actionType && { action_type: actionType }),
+          ...(subsystem  && { subsystem }),
+          ...(startDate  && { startDate }),
+          ...(endDate    && { endDate }),
+        });
+        const res = await fetch(`/admin/api/audit?${params}`, { headers });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        data = await res.json();
+        setLogs(data.logs || []);
+        setTotal(data.total || 0);
+        setTotalPages(data.totalPages || 1);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [actionType, subsystem, startDate, endDate, sortOrder]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [logSource, actionType, subsystem, startDate, endDate, sortOrder]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch distinct action types for dropdown
   useEffect(() => {
@@ -111,6 +130,27 @@ const AuditLogs = () => {
     setPage(newPage);
     fetchLogs(newPage);
   };
+
+  // For external logs: apply client-side filters on the full dataset
+  const displayedLogs = logSource === 'customer'
+    ? allExternalLogs.filter(log => {
+        const matchSearch = !search ||
+          (log.action_type || '').toLowerCase().includes(search.toLowerCase()) ||
+          (log.details || '').toLowerCase().includes(search.toLowerCase());
+        const matchAction = !actionType || log.action_type === actionType;
+        const logDate = log.created_at ? new Date(log.created_at) : null;
+        const matchStart = !startDate || (logDate && logDate >= new Date(startDate));
+        const matchEnd = !endDate || (logDate && logDate <= new Date(endDate + 'T23:59:59'));
+        return matchSearch && matchAction && matchStart && matchEnd;
+      }).sort((a, b) => {
+        const da = new Date(a.created_at || 0);
+        const db = new Date(b.created_at || 0);
+        return sortOrder === 'ASC' ? da - db : db - da;
+      })
+    : logs;
+
+  // Distinct action types from external logs for the dropdown
+  const externalActionTypes = [...new Set(allExternalLogs.map(l => l.action_type).filter(Boolean))].sort();
 
   const handleExport = async () => {
     try {
@@ -238,6 +278,22 @@ const AuditLogs = () => {
             </div>
           </div>
 
+          {/* Source tabs */}
+          <div className="source-tabs">
+            <button
+              className={`source-tab ${logSource === 'internal' ? 'active' : ''}`}
+              onClick={() => { setLogSource('internal'); setActionType(''); setSearch(''); setStartDate(''); setEndDate(''); }}
+            >
+              Internal Logs
+            </button>
+            <button
+              className={`source-tab ${logSource === 'customer' ? 'active' : ''}`}
+              onClick={() => { setLogSource('customer'); setActionType(''); setSearch(''); setStartDate(''); setEndDate(''); setSubsystem(''); }}
+            >
+              Customer Support
+            </button>
+          </div>
+
           {/* Filters */}
           <div className="filter-bar">
             <div className="search-wrap">
@@ -249,54 +305,39 @@ const AuditLogs = () => {
                 placeholder="Search logs..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && fetchLogs(1)}
+                onKeyDown={e => { if (e.key === 'Enter' && logSource === 'internal') fetchLogs(1); }}
               />
             </div>
-            <select
-              className="filter-select"
-              value={subsystem}
-              onChange={e => setSubsystem(e.target.value)}
-            >
-              <option value="">All Subsystems</option>
-              <option value="Admin">Admin</option>
-              <option value="Patient">Patient</option>
-              <option value="Predictive">Predictive</option>
-              <option value="Inventory">Inventory</option>
-              <option value="Customer">Customer</option>
-              <option value="Billing">Billing</option>
-              <option value="Staff">Staff</option>
-            </select>
-            <select
-              className="filter-select"
-              value={actionType}
-              onChange={e => setActionType(e.target.value)}
-            >
+            {logSource === 'internal' && (
+              <select className="filter-select" value={subsystem} onChange={e => setSubsystem(e.target.value)}>
+                <option value="">All Subsystems</option>
+                <option value="Admin">Admin</option>
+                <option value="Patient">Patient</option>
+                <option value="Predictive">Predictive</option>
+                <option value="Inventory">Inventory</option>
+                <option value="Customer">Customer</option>
+                <option value="Billing">Billing</option>
+                <option value="Staff">Staff</option>
+              </select>
+            )}
+            <select className="filter-select" value={actionType} onChange={e => setActionType(e.target.value)}>
               <option value="">All Action Types</option>
-              {actionTypes.map(t => (
+              {(logSource === 'customer' ? externalActionTypes : actionTypes).map(t => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
             <div className="date-range">
-              <input
-                type="date"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                title="Start date"
-              />
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} title="Start date" />
               <span>—</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={e => setEndDate(e.target.value)}
-                title="End date"
-              />
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} title="End date" />
             </div>
-            {(subsystem || actionType || startDate || endDate) && (
-              <button className="clear-btn" onClick={() => { setSubsystem(''); setActionType(''); setStartDate(''); setEndDate(''); }}>
+            {(subsystem || actionType || startDate || endDate || search) && (
+              <button className="clear-btn" onClick={() => { setSubsystem(''); setActionType(''); setStartDate(''); setEndDate(''); setSearch(''); }}>
                 Clear
               </button>
             )}
           </div>
+
 
           {/* Table */}
           {loading ? (
@@ -327,11 +368,11 @@ const AuditLogs = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {logs.length === 0 ? (
+                    {displayedLogs.length === 0 ? (
                       <tr>
                         <td colSpan="6" className="empty-row">No logs found.</td>
                       </tr>
-                    ) : logs.map(log => {
+                    ) : displayedLogs.map(log => {
                       const u = getUserDisplay(log);
                       return (
                         <tr key={log.log_id}>
@@ -369,23 +410,18 @@ const AuditLogs = () => {
               {/* Pagination */}
               <div className="pagination-row">
                 <span className="pagination-info">
-                  Showing {logs.length === 0 ? 0 : (page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, total)} of {total} entries
+                  {logSource === 'customer'
+                    ? `Showing ${displayedLogs.length} of ${allExternalLogs.length} entries`
+                    : `Showing ${logs.length === 0 ? 0 : (page - 1) * LIMIT + 1}–${Math.min(page * LIMIT, total)} of ${total} entries`
+                  }
                 </span>
                 <div className="pagination-btns">
-                  <button
-                    className="page-btn"
-                    disabled={page <= 1}
-                    onClick={() => handlePageChange(page - 1)}
-                  >
-                    Previous
-                  </button>
-                  <button
-                    className="page-btn active-page"
-                    disabled={page >= totalPages}
-                    onClick={() => handlePageChange(page + 1)}
-                  >
-                    Next
-                  </button>
+                  {logSource === 'internal' && (
+                    <>
+                      <button className="page-btn" disabled={page <= 1} onClick={() => handlePageChange(page - 1)}>Previous</button>
+                      <button className="page-btn active-page" disabled={page >= totalPages} onClick={() => handlePageChange(page + 1)}>Next</button>
+                    </>
+                  )}
                 </div>
               </div>
             </>
@@ -406,16 +442,27 @@ const AuditLogs = () => {
                 ['Log ID',     selectedLog.log_id],
                 ['Timestamp',  formatTimestamp(selectedLog.created_at)],
                 ['User',       getUserDisplay(selectedLog).name],
+                ['Role',       selectedLog.user?.actorRole || selectedLog.user?.Role?.subsystem || '-'],
                 ['User ID',    selectedLog.user_id],
                 ['Action',     selectedLog.action_type],
+                ['Title',      selectedLog.user?.title || '-'],
                 ['Details',    selectedLog.details || '-'],
+                ['Inquiry ID', selectedLog.user?.inquiryId || '-'],
                 ['IP Address', selectedLog.ip_addr || '-'],
-              ].map(([label, value]) => (
+              ].filter(([, v]) => v && v !== '-').map(([label, value]) => (
                 <div key={label} className="detail-row">
                   <span className="detail-label">{label}</span>
                   <span className="detail-value">{value}</span>
                 </div>
               ))}
+              {selectedLog.user?.metadata && (
+                <div className="detail-row">
+                  <span className="detail-label">Metadata</span>
+                  <span className="detail-value" style={{ fontFamily: 'monospace', fontSize: '0.82rem', whiteSpace: 'pre-wrap' }}>
+                    {JSON.stringify(selectedLog.user.metadata, null, 2)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
