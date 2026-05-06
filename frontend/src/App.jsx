@@ -5,6 +5,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import UserManagement from './pages/UserManagement';
 import RolesManagement from './pages/RolesManagement';
 import ServiceCatalog from './pages/ServiceCatalog';
+import AuditLogs from './pages/AuditLogs';
 import ProtectedRoute from './routes/ProtectedRoute';
 
 function App() {
@@ -15,38 +16,11 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
 
         {/* Protected routes */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/users"
-          element={
-            <ProtectedRoute>
-              <UserManagement />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/roles"
-          element={
-            <ProtectedRoute>
-              <RolesManagement />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/services"
-          element={
-            <ProtectedRoute>
-              <ServiceCatalog />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/users"     element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
+        <Route path="/roles"     element={<ProtectedRoute><RolesManagement /></ProtectedRoute>} />
+        <Route path="/services"  element={<ProtectedRoute><ServiceCatalog /></ProtectedRoute>} />
+        <Route path="/audit"     element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/login" replace />} />

@@ -2,6 +2,11 @@
 node_modules/
 frontend/node_modules/
 
+# Environment variables — never commit secrets
+.env
+.env.local
+.env.*.local
+
 # React build output
 frontend/build/
 
@@ -12,3 +17,6 @@ npm-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Editor
+.vscode/

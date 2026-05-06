@@ -88,8 +88,6 @@ const login = async (req, res) => {
       permissions: rolePermissions   // e.g. ['Create', 'View', 'Patch']
     };
 
-    console.log('Login payload subsystem:', roleSubsystem);
-
     const accessToken = generateToken(payload);
     const refreshToken = generateRefreshToken(payload);
 

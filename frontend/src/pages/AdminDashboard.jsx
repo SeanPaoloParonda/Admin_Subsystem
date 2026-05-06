@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AdminDashboard.css';
-import { NavLink } from 'react-router-dom';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -77,7 +76,9 @@ const AdminDashboard = () => {
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <img src="/hospitallogo.png" alt="VitalMed Logo" className="logo-icon" />
+          <div className="logo-icon">
+            <img src="/hospitallogo.png" alt="VitalMed Logo" width="55" height="44" />
+          </div>
           <div className="logo-text-wrapper">
             <span className="logo-text">VitalMed</span>
             <span className="logo-subtext">Hospital System</span>
@@ -85,31 +86,39 @@ const AdminDashboard = () => {
         </div>
 
         <nav className="sidebar-nav">
-          <NavLink to="/dashboard" className="nav-item">
-            Dashboard
-          </NavLink>
-          <NavLink to="/users" className="nav-item">
-            User Management
-          </NavLink>
-          <NavLink to="/roles" className="nav-item">
-            Roles & Permissions
-          </NavLink>
-          <NavLink to="/services" className="nav-item">
-            Service Catalog
-          </NavLink>
-          <NavLink to="/audit" className="nav-item">
-            Audit Logs
-          </NavLink>
+          {[
+            { label: 'Dashboard', active: true, path: '/dashboard', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> },
+            { label: 'User Management', active: false, path: '/users', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+            { label: 'Roles & Permissions', active: false, path: '/roles', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
+            { label: 'Service Catalog', active: false, path: '/services', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> },
+            { label: 'Audit Logs', active: false, path: '/audit', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className={`nav-item ${item.active ? 'active' : ''}`}
+              onClick={() => item.path !== '#' && navigate(item.path)}
+              style={{ cursor: item.path !== '#' ? 'pointer' : 'default' }}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </div>
+          ))}
         </nav>
 
         <div className="sidebar-footer">
           <div className="profile-info">
             <div className="profile-details">
-              <div className="profile-role">{userInfo.role || 'Role'}</div>
-              <div className="profile-name">{userInfo.username || 'Username'}</div>
+              <div className="profile-name">{userInfo.username || 'admin'}</div>
+              <div className="profile-role">{userInfo.role || 'View Staff'}</div>
             </div>
           </div>
-          <button className="logout-btn" onClick={handleLogout}>Logout</button>
+          <button className="logout-btn" title="Logout" onClick={handleLogout}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </button>
         </div>
       </aside>
 
@@ -152,16 +161,14 @@ const AdminDashboard = () => {
                 {activities.length === 0 ? (
                   <p className="empty">No recent activity found.</p>
                 ) : (
-<div className="activity-list">
+                  <div className="activity-list">
                     {activities.map((act) => (
                       <div key={act.log_id} className="activity-item">
                         <span className="activity-user">{act.username || 'System'}</span>
                         <span className="activity-spacer"> - </span>
                         <span className="activity-action">{act.action_type}</span>
                         <span className="activity-spacer"> - </span>
-                        <span className="activity-time">
-                          {new Date(act.created_at).toLocaleString()}
-                        </span>
+                        <span className="activity-time">{new Date(act.created_at).toLocaleString()}</span>
                       </div>
                     ))}
                   </div>

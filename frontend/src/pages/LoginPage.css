@@ -106,7 +106,7 @@ body, html, #root, .login-bg, .login-card, .login-logo, .login-form,
   background: none;
   border: none;
   color: #1a9bb6;
-  text-decoration: underline;
+  text-decoration: none;
   cursor: pointer;
   font-size: 0.95rem;
   padding: 0;

@@ -3,8 +3,8 @@ const sequelize = require('../config/db');
 
 const ReferenceData = sequelize.define('ReferenceData', {
   service_id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
     primaryKey: true
   },
   service_name: {

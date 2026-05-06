@@ -17,7 +17,7 @@ router.use(protect);
 router.get('/', requirePermission('View'), getRoles);
 // Specific routes must come before parameterized ones to avoid conflicts
 router.get('/user/:userId/permissions', requirePermission('View'), getUserPermissions);
-router.get('/:role/permissions', requirePermission('View'), getRolePermissions);;
+router.get('/:roleId/permissions', requirePermission('View'), getRolePermissions);
 
 // Create/update require Create/Patch permissions
 router.post('/', requirePermission('Create'), createRole);

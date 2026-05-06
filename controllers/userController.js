@@ -179,13 +179,16 @@ const updateUser = async (req, res) => {
 
     await user.update(updates);
 
-    // Determine specific action type
+    // Determine specific action type — compare against updates, not old user.status
     let actionType = 'USER_UPDATED';
     let actionDetails = `User ${user.username} updated by ${req.user.username}`;
 
-    if (status === 'active' && user.status !== 'active') {
+    if (updates.status === 'active' && user.status !== 'active') {
       actionType = 'USER_ACTIVATED';
       actionDetails = `User ${user.username} activated by ${req.user.username}`;
+    } else if (updates.status === 'inactive') {
+      actionType = 'USER_DEACTIVATED';
+      actionDetails = `User ${user.username} deactivated by ${req.user.username}`;
     } else if (password && password.trim()) {
       actionType = 'USER_PASSWORD_CHANGED';
       actionDetails = `Password for user ${user.username} changed via edit by ${req.user.username}`;

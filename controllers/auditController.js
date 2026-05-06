@@ -1,13 +1,20 @@
 const AuditLog = require('../models/auditLog');
+const User = require('../models/user');
+const Role = require('../models/role');
 const { Op } = require('sequelize');
 const sequelize = require('../config/db');
+
+// Set up associations for joins
+if (!AuditLog.associations.user) {
+  AuditLog.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+}
 
 /**
  * Get all audit logs (with pagination and filtering)
  */
 const getAllLogs = async (req, res) => {
   try {
-    const { page = 1, limit = 20, user_id, action_type, startDate, endDate } = req.query;
+    const { page = 1, limit = 20, user_id, action_type, startDate, endDate, search, subsystem, sortOrder = 'DESC' } = req.query;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
@@ -15,18 +22,37 @@ const getAllLogs = async (req, res) => {
     const where = {};
     if (user_id) where.user_id = user_id;
     if (action_type) where.action_type = action_type;
+    if (search) where.action_type = { [Op.iLike]: `%${search}%` };
 
     if (startDate || endDate) {
       where.created_at = {};
       if (startDate) where.created_at[Op.gte] = new Date(startDate);
-      if (endDate) where.created_at[Op.lte] = new Date(endDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        where.created_at[Op.lte] = end;
+      }
     }
+
+    // Build role include — filter by subsystem if provided
+    const roleInclude = {
+      model: Role,
+      attributes: ['subsystem'],
+      ...(subsystem ? { where: { subsystem } } : {})
+    };
 
     const logs = await AuditLog.findAndCountAll({
       where,
-      order: [['created_at', 'DESC']],
+      order: [['created_at', sortOrder === 'ASC' ? 'ASC' : 'DESC']],
       limit: limitNum,
-      offset
+      offset,
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['username', 'first_name', 'last_name', 'staff_id'],
+        required: subsystem ? true : false,  // INNER JOIN when filtering by subsystem
+        include: [roleInclude]
+      }]
     });
 
     res.json({
@@ -108,8 +134,20 @@ const getRecentActivity = async (req, res) => {
 };
 
 /**
- * Get action type statistics
+ * Get all distinct action types (for filter dropdown)
  */
+const getActionTypes = async (req, res) => {
+  try {
+    const logs = await AuditLog.findAll({
+      attributes: [[sequelize.fn('DISTINCT', sequelize.col('action_type')), 'action_type']],
+      order: [['action_type', 'ASC']]
+    });
+    res.json({ actionTypes: logs.map(l => l.action_type) });
+  } catch (error) {
+    console.error('Get action types error:', error);
+    res.status(500).json({ message: 'Server error fetching action types' });
+  }
+};
 const getActionStats = async (req, res) => {
   try {
     const logs = await AuditLog.findAll({
@@ -170,5 +208,6 @@ module.exports = {
   getUserLogs,
   getRecentActivity,
   getActionStats,
+  getActionTypes,
   exportLogs
 };

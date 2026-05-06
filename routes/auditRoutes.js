@@ -5,6 +5,7 @@ const {
   getLogById, 
   getUserLogs, 
   getRecentActivity, 
+  getActionTypes,
   exportLogs 
 } = require('../controllers/auditController');
 const { ingestAuditLogs } = require('../controllers/subsystemAuditController');
@@ -23,6 +24,7 @@ router.use(protect);
 router.get('/', requirePermission('View'), getAllLogs);
 router.get('/export', requirePermission('View'), exportLogs);
 router.get('/recent', requirePermission('View'), getRecentActivity);
+router.get('/action-types', requirePermission('View'), getActionTypes);
 router.get('/user/:userId', requirePermission('View'), getUserLogs);
 router.get('/:id', requirePermission('View'), getLogById);
 

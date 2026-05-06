@@ -74,20 +74,15 @@ const LoginPage = () => {
             />
           </div>
           <div className="login-forgot">
-            <button 
-              type="button" 
-              className="link-button"
-              onClick={() => alert('Forgot password flow coming soon')}
-            >
-              Forgot Password?
-            </button>
+            <a href="#" className="link-button"
+              onClick={(e) => e.preventDefault()}>Forgot Password?</a>
           </div>
           {error && <div className="login-error">{error}</div>}
           <button type="submit" disabled={loading}>
             {loading ? (
               <>
                 <span className="btn-spinner"></span>
-                Signing In...
+                Signing In
               </>
             ) : 'Sign In'}
           </button>

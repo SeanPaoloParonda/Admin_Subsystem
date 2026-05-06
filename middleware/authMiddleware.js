@@ -14,8 +14,7 @@ const protect = (req, res, next) => {
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) return res.status(500).json({ message: 'Server misconfiguration: JWT_SECRET not set' });
     const decoded = jwt.verify(token, jwtSecret);
-    console.log('protect middleware - decoded subsystem:', decoded.subsystem);
-    req.user = decoded; // { user_id, role_id, subsystem, permissions }
+    req.user = decoded;
     next();
   } catch (error) {
     console.error('Token verify error:', error.message);
@@ -30,8 +29,6 @@ const protect = (req, res, next) => {
 const enforceSubsystem = (expectedSubsystem) => {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ message: "Not authenticated" });
-
-    console.log('enforceSubsystem - expected:', expectedSubsystem, 'actual:', req.user.subsystem);
 
     if (req.user.subsystem !== expectedSubsystem) {
       return res.status(403).json({ message: "Access denied: wrong subsystem" });
