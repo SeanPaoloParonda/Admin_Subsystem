@@ -54,17 +54,8 @@ app.use('/admin/api/auth/login', authLimiter);
 app.use('/admin/api/auth/refresh', authLimiter);
 app.use('/admin/api/auth/subsystem-login', authLimiter);
 
-// Routes
-app.use('/admin/api/auth', authRoutes);
-app.use('/admin/api/users', protect, enforceSubsystem('Admin'), userRoutes);
-app.use('/admin/api/roles', protect, enforceSubsystem('Admin'), roleRoutes);
-// Audit ingest (/admin/api/audit/ingest) is public — uses X-Subsystem-Key, not JWT
-// All other audit routes are protected by the router itself
-app.use('/admin/api/audit', auditRoutes);
-app.use('/admin/api/reference', protect, enforceSubsystem('Admin'), referenceRoutes);
-app.use('/admin/api', adminRoutes);
-
 // ── Subsystem-facing public endpoints (X-Subsystem-Key auth only) ──────────
+// Must be mounted BEFORE adminRoutes to avoid the /admin/api prefix catch-all
 // Billing and other subsystems can read the service catalog without a JWT
 app.get('/admin/api/subsystem/services', async (req, res) => {
   const providedKey = req.headers['x-subsystem-key'];
@@ -72,7 +63,6 @@ app.get('/admin/api/subsystem/services', async (req, res) => {
   if (!expectedKey || providedKey !== expectedKey) {
     return res.status(401).json({ message: 'Invalid or missing subsystem key' });
   }
-  // Reuse the existing getAllServices controller
   return require('./controllers/referenceController').getAllServices(req, res);
 });
 
@@ -84,6 +74,16 @@ app.get('/admin/api/subsystem/services/:id', async (req, res) => {
   }
   return require('./controllers/referenceController').getServiceById(req, res);
 });
+
+// Routes
+app.use('/admin/api/auth', authRoutes);
+app.use('/admin/api/users', protect, enforceSubsystem('Admin'), userRoutes);
+app.use('/admin/api/roles', protect, enforceSubsystem('Admin'), roleRoutes);
+// Audit ingest (/admin/api/audit/ingest) is public — uses X-Subsystem-Key, not JWT
+// All other audit routes are protected by the router itself
+app.use('/admin/api/audit', auditRoutes);
+app.use('/admin/api/reference', protect, enforceSubsystem('Admin'), referenceRoutes);
+app.use('/admin/api', adminRoutes);
 
 // Serve frontend build files (works in both dev and production)
 const frontendPath = path.join(__dirname, 'frontend/build');
