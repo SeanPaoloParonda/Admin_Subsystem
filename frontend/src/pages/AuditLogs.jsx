@@ -379,11 +379,7 @@ const AuditLogs = () => {
                         <tr key={log.log_id}>
                           <td className="col-timestamp">{formatTimestamp(log.created_at)}</td>
                           <td className="col-user">
-                            <span
-                              className="user-name user-name-link"
-                              onClick={() => log.user_id && navigate(`/users?highlight=${log.user_id}`)}
-                              title="Go to user"
-                            >{u.name}</span>
+                            <span className="user-name">{u.name}</span>
                             <span className="user-sub">{u.sub}</span>
                           </td>
                           <td className="col-action">
