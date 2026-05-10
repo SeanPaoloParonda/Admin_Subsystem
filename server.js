@@ -56,7 +56,8 @@ app.use('/admin/api/auth/subsystem-login', authLimiter);
 
 // ── Subsystem-facing public endpoints (X-Subsystem-Key auth only) ──────────
 // Must be mounted BEFORE adminRoutes to avoid the /admin/api prefix catch-all
-// Billing and other subsystems can read the service catalog without a JWT
+
+// Billing — read service catalog
 app.get('/admin/api/subsystem/services', async (req, res) => {
   const providedKey = req.headers['x-subsystem-key'];
   const expectedKey = process.env.SUBSYSTEM_API_KEY;
@@ -73,6 +74,97 @@ app.get('/admin/api/subsystem/services/:id', async (req, res) => {
     return res.status(401).json({ message: 'Invalid or missing subsystem key' });
   }
   return require('./controllers/referenceController').getServiceById(req, res);
+});
+
+// Staff Management — GET users for their subsystem + PATCH staff_id
+app.get('/admin/api/subsystem/users', async (req, res) => {
+  const providedKey = req.headers['x-subsystem-key'];
+  const expectedKey = process.env.SUBSYSTEM_API_KEY;
+  if (!expectedKey || providedKey !== expectedKey) {
+    return res.status(401).json({ message: 'Invalid or missing subsystem key' });
+  }
+
+  // subsystem must be declared in query: ?subsystem=Staff
+  const { subsystem } = req.query;
+  if (!subsystem) {
+    return res.status(400).json({ message: 'subsystem query param is required' });
+  }
+
+  try {
+    const User = require('./models/user');
+    const Role = require('./models/role');
+    const users = await User.findAll({
+      include: [{
+        model: Role,
+        attributes: ['role_id', 'name', 'subsystem'],
+        where: { subsystem }   // only users whose role belongs to this subsystem
+      }],
+      attributes: { exclude: ['pwd_hash'] },
+      order: [['created_at', 'DESC']]
+    });
+    return res.json({ users });
+  } catch (err) {
+    console.error('Subsystem GET users error:', err);
+    return res.status(500).json({ message: 'Server error fetching users' });
+  }
+});
+
+app.patch('/admin/api/subsystem/users/:userId/staff-id', async (req, res) => {
+  const providedKey = req.headers['x-subsystem-key'];
+  const expectedKey = process.env.SUBSYSTEM_API_KEY;
+  if (!expectedKey || providedKey !== expectedKey) {
+    return res.status(401).json({ message: 'Invalid or missing subsystem key' });
+  }
+
+  const { userId } = req.params;
+  const { staff_id, subsystem } = req.body;
+
+  if (!subsystem) {
+    return res.status(400).json({ message: 'subsystem is required in the request body' });
+  }
+  if (staff_id === undefined || staff_id === null) {
+    return res.status(400).json({ message: 'staff_id is required' });
+  }
+
+  try {
+    const User = require('./models/user');
+    const Role = require('./models/role');
+
+    const user = await User.findByPk(userId, {
+      include: [{ model: Role, attributes: ['subsystem'] }]
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Enforce subsystem boundary — Staff can only update users in their own subsystem
+    if (user.Role?.subsystem !== subsystem) {
+      return res.status(403).json({ message: 'Access denied: user does not belong to your subsystem' });
+    }
+
+    // Check staff_id uniqueness
+    if (staff_id) {
+      const existing = await User.findOne({ where: { staff_id } });
+      if (existing && existing.user_id !== userId) {
+        return res.status(409).json({ message: 'staff_id is already assigned to another user' });
+      }
+    }
+
+    await user.update({ staff_id: staff_id || null });
+
+    return res.json({
+      message: 'staff_id updated successfully',
+      user: {
+        user_id: user.user_id,
+        username: user.username,
+        staff_id: user.staff_id
+      }
+    });
+  } catch (err) {
+    console.error('Subsystem PATCH staff_id error:', err);
+    return res.status(500).json({ message: 'Server error updating staff_id' });
+  }
 });
 
 // Routes
