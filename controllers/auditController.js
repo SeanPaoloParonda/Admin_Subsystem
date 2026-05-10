@@ -3,6 +3,7 @@ const User = require('../models/user');
 const Role = require('../models/role');
 const { Op } = require('sequelize');
 const sequelize = require('../config/db');
+const { logAdminAction } = require('../utils/auditUtils');
 
 // Set up associations for joins
 if (!AuditLog.associations.user) {
@@ -23,6 +24,7 @@ const getAllLogs = async (req, res) => {
     if (user_id) where.user_id = user_id;
     if (action_type) where.action_type = action_type;
     if (search) where.action_type = { [Op.iLike]: `%${search}%` };
+    if (subsystem) where.subsystem = subsystem;
 
     if (startDate || endDate) {
       where.created_at = {};
@@ -34,11 +36,11 @@ const getAllLogs = async (req, res) => {
       }
     }
 
-    // Build role include — filter by subsystem if provided
+    // Build role include — no longer needed for subsystem filtering
+    // subsystem is now stored directly on the audit_log row
     const roleInclude = {
       model: Role,
       attributes: ['subsystem'],
-      ...(subsystem ? { where: { subsystem } } : {})
     };
 
     const logs = await AuditLog.findAndCountAll({
@@ -50,7 +52,7 @@ const getAllLogs = async (req, res) => {
         model: User,
         as: 'user',
         attributes: ['username', 'first_name', 'last_name'],
-        required: subsystem ? true : false,  // INNER JOIN when filtering by subsystem
+        required: false,
         include: [roleInclude]
       }]
     });
@@ -184,7 +186,7 @@ const exportLogs = async (req, res) => {
       order: [['created_at', 'DESC']]
     });
 
-    await AuditLog.create({
+    await logAdminAction({
       user_id: req.user.user_id,
       action_type: 'AUDIT_EXPORT',
       details: `Audit logs exported by ${req.user.username}`,

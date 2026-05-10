@@ -1,5 +1,5 @@
 const ReferenceData = require('../models/referenceData');
-const AuditLog = require('../models/auditLog');
+const { logAdminAction } = require('../utils/auditUtils');
 
 /**
  * Get all reference data (services)
@@ -64,7 +64,7 @@ const createService = async (req, res) => {
       base_cost: base_cost || 0
     });
 
-    await AuditLog.create({
+    await logAdminAction({
       user_id: req.user.user_id,
       action_type: 'REFERENCE_CREATED',
       details: `Service ${service_name} created by ${req.user.username}`,
@@ -96,7 +96,7 @@ const updateService = async (req, res) => {
       base_cost: base_cost !== undefined ? base_cost : service.base_cost
     });
 
-    await AuditLog.create({
+    await logAdminAction({
       user_id: req.user.user_id,
       action_type: 'REFERENCE_UPDATED',
       details: `Service ${service.service_name} updated by ${req.user.username}`,
@@ -121,7 +121,7 @@ const deleteService = async (req, res) => {
 
     await service.update({ is_available: false });
 
-    await AuditLog.create({
+    await logAdminAction({
       user_id: req.user.user_id,
       action_type: 'REFERENCE_DEACTIVATED',
       details: `Service ${service.service_name} deactivated by ${req.user.username}`,

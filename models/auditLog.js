@@ -26,6 +26,10 @@ const AuditLog = sequelize.define('AuditLog', {
   ip_addr: { 
     type: DataTypes.STRING(45)
   },
+  subsystem: {
+    type: DataTypes.STRING(50),
+    allowNull: true
+  },
 }, {
   tableName: 'audit_logs',
   timestamps: false,

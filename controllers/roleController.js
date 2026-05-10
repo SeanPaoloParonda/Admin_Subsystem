@@ -2,8 +2,8 @@ const User = require('../models/user');
 const Role = require('../models/role');
 const Permission = require('../models/permission');
 const RolePermission = require('../models/rolePermission');
-const AuditLog = require('../models/auditLog');
 const sequelize = require('../config/db');
+const { logAdminAction } = require('../utils/auditUtils');
 
 /**
  * Get all roles and their permissions
@@ -75,7 +75,7 @@ const createRole = async (req, res) => {
       include: [{ model: Permission, through: { attributes: [] }, attributes: ['permission_id', 'action'] }]
     });
 
-    await AuditLog.create({
+    await logAdminAction({
       user_id: req.user.user_id,
       action_type: 'ROLE_CREATED',
       details: `Role "${name}" created in subsystem "${subsystem}" by ${req.user.username}`,
@@ -157,7 +157,7 @@ const updateRole = async (req, res) => {
       actionDetails = `Role "${role.name}" activated by ${req.user.username}`;
     }
 
-    await AuditLog.create({
+    await logAdminAction({
       user_id: req.user.user_id,
       action_type: actionType,
       details: actionDetails,
@@ -196,7 +196,7 @@ const assignRole = async (req, res) => {
 
     await user.update({ role_id });
 
-    await AuditLog.create({
+    await logAdminAction({
       user_id: req.user.user_id,
       action_type: 'ROLE_ASSIGNED',
       details: `Role ${role.name} assigned to user ${user.username} by ${req.user.username}`,

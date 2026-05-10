@@ -76,9 +76,10 @@ const ingestAuditLogs = async (req, res) => {
 
       records.push({
         user_id:     entry.user_id,
-        action_type: actionType.slice(0, 50),   // enforce column length
+        action_type: actionType.slice(0, 50),
         details:     entry.details || null,
         ip_addr:     entry.ip_addr || null,
+        subsystem:   entry.subsystem,
       });
     }
 

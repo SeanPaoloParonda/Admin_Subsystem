@@ -1,9 +1,9 @@
 const User = require('../models/user');
 const Role = require('../models/role');
-const AuditLog = require('../models/auditLog');
 const jwt = require('jsonwebtoken');
 const { comparePassword } = require('../utils/passwordUtils');
 const { generateToken, generateRefreshToken } = require('../utils/tokenUtils');
+const { logAdminAction } = require('../utils/auditUtils');
 
 /**
  * Login user and generate access + refresh tokens
@@ -46,7 +46,7 @@ const login = async (req, res) => {
     }
 
     if (!user) {
-      await AuditLog.create({
+      await logAdminAction({
         user_id: '00000000-0000-0000-0000-000000000000', // System placeholder for unknown user
         action_type: 'LOGIN_FAILED',
         details: `Failed login attempt for username: ${username}`,
@@ -57,7 +57,7 @@ const login = async (req, res) => {
 
     // Check status
     if (!user.status || user.status !== 'active') {
-      await AuditLog.create({
+      await logAdminAction({
         user_id: user.user_id,
         action_type: 'LOGIN_FAILED',
         details: 'Inactive account login attempt',
@@ -69,7 +69,7 @@ const login = async (req, res) => {
     // Verify password
     const isMatch = await comparePassword(password, user.pwd_hash);
     if (!isMatch) {
-      await AuditLog.create({
+      await logAdminAction({
         user_id: user.user_id,
         action_type: 'LOGIN_FAILED',
         details: 'Invalid password attempt',
@@ -80,7 +80,7 @@ const login = async (req, res) => {
 
     // Block non-Admin subsystem users from logging into the Admin panel
     if (roleSubsystem !== 'Admin') {
-      await AuditLog.create({
+      await logAdminAction({
         user_id: user.user_id,
         action_type: 'LOGIN_FAILED',
         details: `User ${username} (subsystem: ${roleSubsystem}) attempted to log into Admin panel`,
@@ -105,7 +105,7 @@ const login = async (req, res) => {
     // Update last_login timestamp
     await user.update({ last_login: new Date() });
 
-    await AuditLog.create({
+    await logAdminAction({
       user_id: user.user_id,
       action_type: 'LOGIN_SUCCESS',
       details: `User ${username} logged in successfully`,
@@ -139,7 +139,7 @@ const logout = async (req, res) => {
   try {
     const userId = req.user.user_id;
 
-    await AuditLog.create({
+    await logAdminAction({
       user_id: userId,
       action_type: 'LOGOUT',
       details: `User ${req.user.username} logged out`,

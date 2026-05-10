@@ -1,7 +1,7 @@
 const User = require('../models/user');
-const AuditLog = require('../models/auditLog');
 const Role = require('../models/role');
 const { hashPassword } = require('../utils/passwordUtils');
+const { logAdminAction } = require('../utils/auditUtils');
 
 /**
  * Get all users (with pagination and filtering)
@@ -103,7 +103,7 @@ const createUser = async (req, res) => {
       status: status || 'active'
     });
 
-    await AuditLog.create({
+    await logAdminAction({
       user_id: req.user.user_id,
       action_type: 'USER_CREATED',
       details: `New user created: ${username} with role_id: ${role_id}`,
@@ -180,7 +180,7 @@ const updateUser = async (req, res) => {
       actionDetails = `Password for user ${user.username} changed via edit by ${req.user.username}`;
     }
 
-    await AuditLog.create({
+    await logAdminAction({
       user_id: req.user.user_id,
       action_type: actionType,
       details: actionDetails,
@@ -225,7 +225,7 @@ const deleteUser = async (req, res) => {
 
     await user.update({ status: 'inactive' });
 
-    await AuditLog.create({
+    await logAdminAction({
       user_id: req.user.user_id,
       action_type: 'USER_DEACTIVATED',
       details: `User ${user.username} deactivated by ${req.user.username}`,
@@ -255,7 +255,7 @@ const changePassword = async (req, res) => {
     const pwd_hash = await hashPassword(newPassword);
     await user.update({ pwd_hash });
 
-    await AuditLog.create({
+    await logAdminAction({
       user_id: req.user.user_id,
       action_type: 'PASSWORD_CHANGED',
       details: `Password for user ${user.username} changed by ${req.user.username}`,
