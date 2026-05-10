@@ -140,7 +140,10 @@ const getRecentActivity = async (req, res) => {
  */
 const getActionTypes = async (req, res) => {
   try {
+    const { subsystem } = req.query;
+    const where = subsystem ? { subsystem } : {};
     const logs = await AuditLog.findAll({
+      where,
       attributes: [[sequelize.fn('DISTINCT', sequelize.col('action_type')), 'action_type']],
       order: [['action_type', 'ASC']]
     });

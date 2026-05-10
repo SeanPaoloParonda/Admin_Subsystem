@@ -13,7 +13,7 @@
  * Fetch and normalize Customer Support audit logs
  * GET /admin/api/audit/external/customer
  */
-const getCustomerAuditLogs = async (req, res) => {
+const getCustomerAuditLogs = async (_req, res) => {
   try {
     const apiKey = process.env.AUDIT_LOGS_API_KEY;
     if (!apiKey) {
@@ -46,7 +46,7 @@ const getCustomerAuditLogs = async (req, res) => {
       log_id:      log._id || log.id || `customer-${i}`,
       created_at:  log.createdAt || null,
       user_id:     log.actorId || null,
-      action_type: log.action ? log.action.toUpperCase().replace('.', '_') : 'UNKNOWN',
+      action_type: log.action ? log.action.toUpperCase().replace(/\./g, '_') : 'UNKNOWN',
       details:     log.description || log.title || null,
       ip_addr:     null, // not provided by Customer Support API
       subsystem:   'Customer',

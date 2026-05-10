@@ -591,6 +591,17 @@
   background: #f0fdfc !important;
 }
 
+.row-highlighted {
+  background: #fef9c3 !important;
+  outline: 2px solid #f59e0b;
+  animation: highlight-fade 3s ease forwards;
+}
+
+@keyframes highlight-fade {
+  0%   { background: #fef08a; }
+  100% { background: transparent; }
+}
+
 /* ── Deactivate confirm modal ───────────────────────────────────────────── */
 .deactivate-modal {
   max-width: 420px;

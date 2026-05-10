@@ -25,7 +25,7 @@ router.get('/stats', async (req, res) => {
 
     res.json({ totalUsers, activeUsers, rolesDefined, auditEvents });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch stats', details: err.message });
+    res.status(500).json({ message: 'Failed to fetch stats' });
   }
 });
 
@@ -41,7 +41,6 @@ router.get('/activities', async (req, res) => {
         attributes: ['username']
       }]
     });
-    // Transform to include username directly
     const transformedLogs = logs.map(log => ({
       log_id: log.log_id,
       user_id: log.user_id,
@@ -51,7 +50,7 @@ router.get('/activities', async (req, res) => {
     }));
     res.json(transformedLogs);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch activities', details: err.message });
+    res.status(500).json({ message: 'Failed to fetch activities' });
   }
 });
 
@@ -82,7 +81,7 @@ router.get('/alerts', async (req, res) => {
 
     res.json(transformedAlerts);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch alerts', details: err.message });
+    res.status(500).json({ message: 'Failed to fetch alerts' });
   }
 });
 

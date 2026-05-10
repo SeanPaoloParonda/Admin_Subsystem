@@ -26,12 +26,12 @@ const formatTimestamp = (ts) => {
 };
 
 const getUserDisplay = (log) => {
-  if (!log.user) return { name: 'System', sub: log.user_id?.slice(0, 8) + '...' };
+  if (!log.user) return { name: 'System', sub: log.subsystem || log.user_id?.slice(0, 8) + '...' };
   const { first_name, last_name, username, Role: role, actorRole } = log.user;
   const full = [first_name, last_name].filter(Boolean).join(' ');
   return {
     name: full || username || 'Unknown',
-    sub: actorRole || role?.subsystem || username || ''
+    sub: log.subsystem || actorRole || role?.subsystem || username || ''
   };
 };
 
@@ -106,13 +106,14 @@ const AuditLogs = () => {
     }
   }, [logSource, actionType, subsystem, startDate, endDate, sortOrder]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch distinct action types for dropdown
+  // Fetch distinct action types for dropdown — filtered by selected subsystem
   useEffect(() => {
-    fetch('/admin/api/audit/action-types', { headers })
+    const params = subsystem ? `?subsystem=${subsystem}` : '';
+    fetch(`/admin/api/audit/action-types${params}`, { headers })
       .then(r => r.json())
       .then(d => setActionTypes(d.actionTypes || []))
       .catch(() => {});
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [subsystem]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const stored = localStorage.getItem('user');
@@ -309,7 +310,7 @@ const AuditLogs = () => {
               />
             </div>
             {logSource === 'internal' && (
-              <select className="filter-select" value={subsystem} onChange={e => setSubsystem(e.target.value)}>
+              <select className="filter-select" value={subsystem} onChange={e => { setSubsystem(e.target.value); setActionType(''); }}>
                 <option value="">All Subsystems</option>
                 <option value="Admin">Admin</option>
                 <option value="Patient">Patient</option>
@@ -378,7 +379,11 @@ const AuditLogs = () => {
                         <tr key={log.log_id}>
                           <td className="col-timestamp">{formatTimestamp(log.created_at)}</td>
                           <td className="col-user">
-                            <span className="user-name">{u.name}</span>
+                            <span
+                              className="user-name user-name-link"
+                              onClick={() => log.user_id && navigate(`/users?highlight=${log.user_id}`)}
+                              title="Go to user"
+                            >{u.name}</span>
                             <span className="user-sub">{u.sub}</span>
                           </td>
                           <td className="col-action">

@@ -376,3 +376,11 @@
   border-color: #1a9bb6;
   font-weight: 600;
 }
+
+/* Clickable username */
+.user-name-link {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.user-name-link:hover { color: #1a9bb6; }

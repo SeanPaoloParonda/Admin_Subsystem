@@ -122,7 +122,18 @@ const updateRole = async (req, res) => {
 
     const updateData = {};
     if (name !== undefined) updateData.name = name;
-    if (subsystem !== undefined) updateData.subsystem = subsystem;
+    if (subsystem !== undefined) {
+      // Prevent changing subsystem if users are assigned to this role
+      if (subsystem !== role.subsystem) {
+        const assignedUsers = await require('../models/user').count({ where: { role_id: id } });
+        if (assignedUsers > 0) {
+          return res.status(400).json({
+            message: `Cannot change subsystem — ${assignedUsers} user(s) are assigned to this role. Reassign them first.`
+          });
+        }
+      }
+      updateData.subsystem = subsystem;
+    }
     if (status !== undefined) updateData.status = status;
 
     await role.update(updateData, { transaction });

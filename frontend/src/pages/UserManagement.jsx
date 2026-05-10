@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import './UserManagement.css';
 
 // Must match the `subsystem` column values in the role table
@@ -26,6 +26,9 @@ const emptyForm = {
 
 const UserManagementPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const highlightId = new URLSearchParams(location.search).get('highlight');
+  const highlightRef = useRef(null);
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
   const [subsystemFilter, setSubsystemFilter] = useState('');
@@ -101,12 +104,18 @@ const UserManagementPage = () => {
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try { setUserInfo(JSON.parse(storedUser)); }
+    if (storedUser) {      try { setUserInfo(JSON.parse(storedUser)); }
       catch (err) { console.error('Failed to parse user info:', err); }
     }
     fetchUsers();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Scroll to highlighted user when data loads
+  useEffect(() => {
+    if (highlightId && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightId, users]);
 
   const handleSubsystemChange = (value) => {
     setSubsystemFilter(value);
@@ -552,7 +561,11 @@ const UserManagementPage = () => {
                 </thead>
                 <tbody>
                   {filteredUsers.map(user => (
-                    <tr key={user.user_id} className={selectedUsers.includes(user.user_id) ? 'row-selected' : ''}>
+                    <tr
+                      key={user.user_id}
+                      ref={user.user_id === highlightId ? highlightRef : null}
+                      className={`${selectedUsers.includes(user.user_id) ? 'row-selected' : ''} ${user.user_id === highlightId ? 'row-highlighted' : ''}`}
+                    >
                       <td className="select-cell">
                         <input
                           type="checkbox"
