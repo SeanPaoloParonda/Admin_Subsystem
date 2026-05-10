@@ -9,7 +9,7 @@ const User = sequelize.define('Users', {
     primaryKey: true
   },
   staff_id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.STRING(50),
     allowNull: true,
     unique: true
   },

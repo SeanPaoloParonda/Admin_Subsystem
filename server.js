@@ -152,7 +152,6 @@ app.patch('/admin/api/subsystem/users/:userId/staff-id', async (req, res) => {
     }
 
     await user.update({ staff_id: staff_id || null });
-
     return res.json({
       message: 'staff_id updated successfully',
       user: {
