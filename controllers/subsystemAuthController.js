@@ -175,9 +175,8 @@ const subsystemLogin = async (req, res) => {
         username:  user.username,
         role:      roleName,
         subsystem: roleSubsystem,
+        staff_id:  user.staff_id || null,
         status:    user.status
-        // permissions intentionally omitted — Admin permissions are not applicable
-        // to other subsystems. Define your own permission model internally.
       }
     });
 
