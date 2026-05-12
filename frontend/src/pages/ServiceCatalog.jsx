@@ -36,6 +36,7 @@ const ServiceCatalog = () => {
 
   // Actions dropdown
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [lastUpdatedSort, setLastUpdatedSort] = useState(null); // null | 'asc' | 'desc'
 
   const token = localStorage.getItem('accessToken');
   const headers = { Authorization: `Bearer ${token}` };
@@ -83,11 +84,18 @@ const ServiceCatalog = () => {
     fetchServices(newPage);
   };
 
-  // Filtered by search client-side (search is fast on small datasets)
-  const filteredServices = services.filter(s =>
-    s.service_name?.toLowerCase().includes(search.toLowerCase()) ||
-    s.category?.toLowerCase().includes(search.toLowerCase())
-  );
+  // Filtered by search client-side, then sorted by last updated if active
+  const filteredServices = services
+    .filter(s =>
+      s.service_name?.toLowerCase().includes(search.toLowerCase()) ||
+      s.category?.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (!lastUpdatedSort) return 0;
+      const da = a.last_updated ? new Date(a.last_updated).getTime() : 0;
+      const db = b.last_updated ? new Date(b.last_updated).getTime() : 0;
+      return lastUpdatedSort === 'asc' ? da - db : db - da;
+    });
 
   const openAddModal = () => {
     setEditingService(null);
@@ -234,7 +242,18 @@ const ServiceCatalog = () => {
                       <th>Category</th>
                       <th>Base Cost</th>
                       <th>Status</th>
-                      <th>Last Updated</th>
+                      <th>
+                        <button
+                          className="sort-header-btn"
+                          onClick={() => setLastUpdatedSort(s => s === 'desc' ? 'asc' : 'desc')}
+                          title={lastUpdatedSort === 'desc' ? 'Newest first — click for oldest first' : 'Click to sort by last updated'}
+                        >
+                          Last Updated
+                          <span className="sort-header-icon">
+                            {lastUpdatedSort === 'desc' ? ' ↓' : lastUpdatedSort === 'asc' ? ' ↑' : ' ↕'}
+                          </span>
+                        </button>
+                      </th>
                       <th></th>
                     </tr>
                   </thead>
