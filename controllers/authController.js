@@ -50,7 +50,7 @@ const login = async (req, res) => {
         user_id: '00000000-0000-0000-0000-000000000000', // System placeholder for unknown user
         action_type: 'LOGIN_FAILED',
         details: `Failed login attempt for username: ${username}`,
-        ip_addr: req.ip || req.connection.remoteAddress
+        ip_addr: req.ip
       });
       return res.status(401).json({ message: 'Invalid username or password' });
     }
@@ -61,7 +61,7 @@ const login = async (req, res) => {
         user_id: user.user_id,
         action_type: 'LOGIN_FAILED',
         details: 'Inactive account login attempt',
-        ip_addr: req.ip || req.connection.remoteAddress
+        ip_addr: req.ip
       });
       return res.status(401).json({ message: 'Account is inactive' });
     }
@@ -73,7 +73,7 @@ const login = async (req, res) => {
         user_id: user.user_id,
         action_type: 'LOGIN_FAILED',
         details: 'Invalid password attempt',
-        ip_addr: req.ip || req.connection.remoteAddress
+        ip_addr: req.ip
       });
       return res.status(401).json({ message: 'Invalid username or password' });
     }
@@ -84,7 +84,7 @@ const login = async (req, res) => {
         user_id: user.user_id,
         action_type: 'LOGIN_FAILED',
         details: `User ${username} (subsystem: ${roleSubsystem}) attempted to log into Admin panel`,
-        ip_addr: req.ip || req.connection.remoteAddress
+        ip_addr: req.ip
       });
       return res.status(403).json({ message: 'Access denied: this account does not belong to the Admin subsystem' });
     }
@@ -109,7 +109,7 @@ const login = async (req, res) => {
       user_id: user.user_id,
       action_type: 'LOGIN_SUCCESS',
       details: `User ${username} logged in successfully`,
-      ip_addr: req.ip || req.connection.remoteAddress
+      ip_addr: req.ip
     });
 
     res.json({
@@ -143,7 +143,7 @@ const logout = async (req, res) => {
       user_id: userId,
       action_type: 'LOGOUT',
       details: `User ${req.user.username} logged out`,
-      ip_addr: req.ip || req.connection.remoteAddress
+      ip_addr: req.ip
     });
 
     res.json({ message: 'Logout successful' });

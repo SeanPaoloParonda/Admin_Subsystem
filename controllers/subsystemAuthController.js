@@ -51,7 +51,7 @@ const subsystemLogin = async (req, res) => {
         user_id: '00000000-0000-0000-0000-000000000000',
         action_type: 'SUBSYSTEM_AUTH_FAILED',
         details: `Invalid or missing X-Subsystem-Key from IP ${req.ip}`,
-        ip_addr: req.ip || req.connection.remoteAddress,
+        ip_addr: req.ip,
         subsystem: 'Unknown'
       }).catch(err => console.error('Audit log failed (SUBSYSTEM_AUTH_FAILED):', err.message));
       return res.status(401).json({ message: 'Invalid subsystem key' });
@@ -74,7 +74,7 @@ const subsystemLogin = async (req, res) => {
         user_id: '00000000-0000-0000-0000-000000000000',
         action_type: 'SUBSYSTEM_LOGIN_FAILED',
         details: `[${subsystem}] Login failed — unknown username: ${username}`,
-        ip_addr: req.ip || req.connection.remoteAddress,
+        ip_addr: req.ip,
         subsystem
       }).catch(err => console.error('Audit log failed (SUBSYSTEM_LOGIN_FAILED):', err.message));
       return res.status(401).json({ message: 'Invalid username or password' });
@@ -86,7 +86,7 @@ const subsystemLogin = async (req, res) => {
         user_id: user.user_id,
         action_type: 'SUBSYSTEM_LOGIN_FAILED',
         details: `[${subsystem}] Login failed — inactive account: ${username}`,
-        ip_addr: req.ip || req.connection.remoteAddress,
+        ip_addr: req.ip,
         subsystem
       }).catch(err => console.error('Audit log failed (SUBSYSTEM_LOGIN_FAILED):', err.message));
       return res.status(401).json({ message: 'Account is inactive' });
@@ -99,7 +99,7 @@ const subsystemLogin = async (req, res) => {
         user_id: user.user_id,
         action_type: 'SUBSYSTEM_LOGIN_FAILED',
         details: `[${subsystem}] Login failed — wrong password for: ${username}`,
-        ip_addr: req.ip || req.connection.remoteAddress,
+        ip_addr: req.ip,
         subsystem
       }).catch(err => console.error('Audit log failed (SUBSYSTEM_LOGIN_FAILED):', err.message));
       return res.status(401).json({ message: 'Invalid username or password' });
@@ -135,7 +135,7 @@ const subsystemLogin = async (req, res) => {
         user_id: user.user_id,
         action_type: 'SUBSYSTEM_LOGIN_FAILED',
         details: `[${subsystem}] Login denied — user "${username}" belongs to subsystem "${roleSubsystem}", not "${subsystem}"`,
-        ip_addr: req.ip || req.connection.remoteAddress,
+        ip_addr: req.ip,
         subsystem
       }).catch(err => console.error('Audit log failed (SUBSYSTEM_LOGIN_FAILED):', err.message));
       // Return generic message — don't reveal which subsystem the user belongs to
@@ -163,7 +163,7 @@ const subsystemLogin = async (req, res) => {
       user_id:     user.user_id,
       action_type: 'SUBSYSTEM_LOGIN_SUCCESS',
       details:     `[${subsystem}] Login granted for "${username}" (${roleName}) — permissions: [${rolePermissions.join(', ')}]`,
-      ip_addr:     req.ip || req.connection.remoteAddress,
+      ip_addr:     req.ip,
       subsystem
     }).catch(err => console.error('Audit log failed (SUBSYSTEM_LOGIN_SUCCESS):', err.message));
 

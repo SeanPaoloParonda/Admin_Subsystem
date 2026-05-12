@@ -68,7 +68,7 @@ const createService = async (req, res) => {
       user_id: req.user.user_id,
       action_type: 'REFERENCE_CREATED',
       details: `Service ${service_name} created by ${req.user.username}`,
-      ip_addr: req.ip || req.connection.remoteAddress
+      ip_addr: req.ip
     });
 
     res.status(201).json({ message: 'Service created successfully', service });
@@ -100,7 +100,7 @@ const updateService = async (req, res) => {
       user_id: req.user.user_id,
       action_type: 'REFERENCE_UPDATED',
       details: `Service ${service.service_name} updated by ${req.user.username}`,
-      ip_addr: req.ip || req.connection.remoteAddress
+      ip_addr: req.ip
     });
 
     res.json({ message: 'Service updated successfully', service });
@@ -125,7 +125,7 @@ const deleteService = async (req, res) => {
       user_id: req.user.user_id,
       action_type: 'REFERENCE_DEACTIVATED',
       details: `Service ${service.service_name} deactivated by ${req.user.username}`,
-      ip_addr: req.ip || req.connection.remoteAddress
+      ip_addr: req.ip
     });
 
     res.json({ message: 'Service deactivated successfully' });

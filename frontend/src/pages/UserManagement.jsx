@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import Sidebar from '../components/Sidebar';
 import './UserManagement.css';
 
 // Must match the `subsystem` column values in the role table
@@ -24,8 +25,30 @@ const emptyForm = {
   status: 'active',
 };
 
+const PasswordVisibilityIcon = ({ visible }) => (
+  <svg
+    width="18" height="18" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round"
+    aria-hidden="true" focusable="false"
+  >
+    {visible ? (
+      <>
+        <path d="M2 2l20 20" />
+        <path d="M10.58 10.58A2 2 0 0 0 12 14a2 2 0 0 0 1.42-.58" />
+        <path d="M9.88 4.18A10.6 10.6 0 0 1 12 4c5 0 9.27 3.11 11 8a12.36 12.36 0 0 1-3.06 4.55" />
+        <path d="M6.11 6.11A12.28 12.28 0 0 0 1 12c1.73 4.89 6 8 11 8a10.93 10.93 0 0 0 5.89-1.69" />
+      </>
+    ) : (
+      <>
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12Z" />
+        <circle cx="12" cy="12" r="3" />
+      </>
+    )}
+  </svg>
+);
+
 const UserManagementPage = () => {
-  const navigate = useNavigate();
   const location = useLocation();
   const highlightId = new URLSearchParams(location.search).get('highlight');
   const highlightRef = useRef(null);
@@ -34,7 +57,6 @@ const UserManagementPage = () => {
   const [subsystemFilter, setSubsystemFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [userInfo, setUserInfo] = useState({ username: '', role: '' });
   const [availableRoles, setAvailableRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -103,10 +125,6 @@ const UserManagementPage = () => {
   };
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {      try { setUserInfo(JSON.parse(storedUser)); }
-      catch (err) { console.error('Failed to parse user info:', err); }
-    }
     fetchUsers();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -134,13 +152,6 @@ const UserManagementPage = () => {
     setSelectedUsers(allSelected ? [] : visibleIds);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-    navigate('/login');
-  };
-
   const getUserDisplayName = (user) => {
     const firstName = user.first_name?.trim() || '';
     const lastName = user.last_name?.trim() || '';
@@ -148,16 +159,25 @@ const UserManagementPage = () => {
     return fullName || user.username || 'Unknown User';
   };
 
-  const filteredUsers = users.filter(user => {
-    const roleName = user.Role?.name || '';
-    const matchesSearch =
-      roleName.toLowerCase().includes(search.toLowerCase()) ||
-      (user.username || '').toLowerCase().includes(search.toLowerCase()) ||
-      getUserDisplayName(user).toLowerCase().includes(search.toLowerCase());
-    const matchesRole = roleFilter ? roleName === roleFilter : true;
-    const matchesStatus = statusFilter ? user.status === statusFilter : true;
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  const [lastLoginSort, setLastLoginSort] = useState(null); // null | 'asc' | 'desc'
+
+  const filteredUsers = users
+    .filter(user => {
+      const roleName = user.Role?.name || '';
+      const matchesSearch =
+        roleName.toLowerCase().includes(search.toLowerCase()) ||
+        (user.username || '').toLowerCase().includes(search.toLowerCase()) ||
+        getUserDisplayName(user).toLowerCase().includes(search.toLowerCase());
+      const matchesRole = roleFilter ? roleName === roleFilter : true;
+      const matchesStatus = statusFilter ? user.status === statusFilter : true;
+      return matchesSearch && matchesRole && matchesStatus;
+    })
+    .sort((a, b) => {
+      if (!lastLoginSort) return 0;
+      const da = a.last_login ? new Date(a.last_login).getTime() : 0;
+      const db = b.last_login ? new Date(b.last_login).getTime() : 0;
+      return lastLoginSort === 'asc' ? da - db : db - da;
+    });
 
   const formatLastLogin = (lastLogin) => {
     if (!lastLogin) return '-';
@@ -426,51 +446,7 @@ const UserManagementPage = () => {
 
   return (
     <div className="user-management">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-logo">
-          <div className="logo-icon">
-            <img src="/hospitallogo.png" alt="VitalMed Logo" width="55" height="44" />
-          </div>
-          <div className="logo-text-wrapper">
-            <span className="logo-text">VitalMed</span>
-            <span className="logo-subtext">Hospital System</span>
-          </div>
-        </div>
-        <nav className="sidebar-nav">
-          {[
-            { label: 'Dashboard',          path: '/dashboard', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> },
-            { label: 'User Management',    path: '/users',     active: true, icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
-            { label: 'Roles & Permissions',path: '/roles',     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
-            { label: 'Service Catalog',    path: '/services',  icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> },
-            { label: 'Audit Logs',         path: '/audit',     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className={`nav-item ${item.active ? 'active' : ''}`}
-              onClick={() => navigate(item.path)}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </div>
-          ))}
-        </nav>
-        <div className="sidebar-footer">
-          <div className="profile-info">
-            <div className="profile-details">
-              <div className="profile-name">{userInfo.username || 'Admin'}</div>
-              <div className="profile-role">{userInfo.role || 'Administrator'}</div>
-            </div>
-          </div>
-          <button className="logout-btn" title="Logout" onClick={handleLogout}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-          </button>
-        </div>
-      </aside>
+      <Sidebar />
 
       {/* Main Content */}
       <main className="main-content">
@@ -555,7 +531,18 @@ const UserManagementPage = () => {
                     <th>Username</th>
                     <th>Role</th>
                     <th>Status</th>
-                    <th>Last Login</th>
+                    <th>
+                      <button
+                        className="sort-header-btn"
+                        onClick={() => setLastLoginSort(s => s === 'desc' ? 'asc' : 'desc')}
+                        title={lastLoginSort === 'desc' ? 'Newest first — click for oldest first' : 'Click to sort by last login'}
+                      >
+                        Last Login
+                        <span className="sort-header-icon">
+                          {lastLoginSort === 'desc' ? ' ↓' : lastLoginSort === 'asc' ? ' ↑' : ' ↕'}
+                        </span>
+                      </button>
+                    </th>
                     <th />
                   </tr>
                 </thead>
@@ -674,7 +661,7 @@ const UserManagementPage = () => {
                     onClick={() => setShowPassword(p => !p)}
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showPassword ? '🙈' : '👁️'}
+                    <PasswordVisibilityIcon visible={showPassword} />
                   </button>
                 </div>
               </div>
@@ -806,7 +793,7 @@ const UserManagementPage = () => {
                       onClick={() => setShowEditPassword(p => !p)}
                       aria-label={showEditPassword ? 'Hide password' : 'Show password'}
                     >
-                      {showEditPassword ? '🙈' : '👁️'}
+                      <PasswordVisibilityIcon visible={showEditPassword} />
                     </button>
                   </div>
                 ) : (

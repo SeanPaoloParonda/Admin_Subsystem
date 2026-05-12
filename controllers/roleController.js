@@ -79,7 +79,7 @@ const createRole = async (req, res) => {
       user_id: req.user.user_id,
       action_type: 'ROLE_CREATED',
       details: `Role "${name}" created in subsystem "${subsystem}" by ${req.user.username}`,
-      ip_addr: req.ip || req.connection.remoteAddress
+      ip_addr: req.ip
     });
 
     res.status(201).json({ role: roleWithPermissions });
@@ -172,7 +172,7 @@ const updateRole = async (req, res) => {
       user_id: req.user.user_id,
       action_type: actionType,
       details: actionDetails,
-      ip_addr: req.ip || req.connection.remoteAddress
+      ip_addr: req.ip
     });
 
     res.json({ role: updatedRole });
@@ -211,7 +211,7 @@ const assignRole = async (req, res) => {
       user_id: req.user.user_id,
       action_type: 'ROLE_ASSIGNED',
       details: `Role ${role.name} assigned to user ${user.username} by ${req.user.username}`,
-      ip_addr: req.ip || req.connection.remoteAddress
+      ip_addr: req.ip
     });
 
     res.json({

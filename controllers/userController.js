@@ -107,7 +107,7 @@ const createUser = async (req, res) => {
       user_id: req.user.user_id,
       action_type: 'USER_CREATED',
       details: `New user created: ${username} with role_id: ${role_id}`,
-      ip_addr: req.ip || req.connection.remoteAddress
+      ip_addr: req.ip
     });
 
     res.status(201).json({
@@ -184,7 +184,7 @@ const updateUser = async (req, res) => {
       user_id: req.user.user_id,
       action_type: actionType,
       details: actionDetails,
-      ip_addr: req.ip || req.connection.remoteAddress
+      ip_addr: req.ip
     });
 
     res.json({
@@ -229,7 +229,7 @@ const deleteUser = async (req, res) => {
       user_id: req.user.user_id,
       action_type: 'USER_DEACTIVATED',
       details: `User ${user.username} deactivated by ${req.user.username}`,
-      ip_addr: req.ip || req.connection.remoteAddress
+      ip_addr: req.ip
     });
 
     res.json({ message: 'User deactivated successfully' });
@@ -259,7 +259,7 @@ const changePassword = async (req, res) => {
       user_id: req.user.user_id,
       action_type: 'PASSWORD_CHANGED',
       details: `Password for user ${user.username} changed by ${req.user.username}`,
-      ip_addr: req.ip || req.connection.remoteAddress
+      ip_addr: req.ip
     });
 
     res.json({ message: 'Password changed successfully' });

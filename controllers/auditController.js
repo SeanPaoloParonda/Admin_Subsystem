@@ -193,7 +193,7 @@ const exportLogs = async (req, res) => {
       user_id: req.user.user_id,
       action_type: 'AUDIT_EXPORT',
       details: `Audit logs exported by ${req.user.username}`,
-      ip_addr: req.ip || req.connection.remoteAddress
+      ip_addr: req.ip
     });
 
     res.json({
