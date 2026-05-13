@@ -358,24 +358,30 @@
 .modal-content {
   background: #fff;
   border-radius: 12px;
-  width: 100%;
-  max-width: 480px;
-  max-height: 90vh;
+  width: min(92vw, 420px);
+  max-width: 420px;
+  max-height: 95vh;
   overflow-y: auto;
+  overflow-x: hidden;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
   padding: 0;
+  scrollbar-width: none; /* Firefox */
+}
+
+.modal-content::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px 16px;
+  padding: 16px 20px 14px;
   border-bottom: 1px solid #e5e7eb;
 }
 
 .modal-header h2 {
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: #111827;
   margin: 0;
@@ -384,7 +390,7 @@
 .modal-close {
   background: none;
   border: none;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   color: #6b7280;
   cursor: pointer;
   line-height: 1;
@@ -396,10 +402,10 @@
 }
 
 .modal-form {
-  padding: 20px 24px;
+  padding: 16px 20px 20px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .form-row {
@@ -410,15 +416,15 @@
 
 .form-row label {
   font-size: 0.9rem;
-  font-weight: 600;
-  color: #374151;
+  font-weight: 700;
+  color: #1a2a3a;
 }
 
 .form-row input,
 .form-row select {
-  padding: 10px 12px;
+  padding: 12px 14px;
   border: 1px solid #d1d5db;
-  border-radius: 8px;
+  border-radius: 12px;
   font-size: 0.95rem;
   color: #111827;
   background: #fff;

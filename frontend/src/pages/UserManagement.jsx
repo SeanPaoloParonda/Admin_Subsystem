@@ -804,7 +804,7 @@ const UserManagementPage = () => {
               </div>
 
               <div className="form-row">
-                <label>Password:</label>
+                <label>Password: <span className="required">*</span></label>
                 {editingPassword ? (
                   <div className="password-input-wrapper">
                     <input
