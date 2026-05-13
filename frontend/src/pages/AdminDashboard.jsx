@@ -150,7 +150,7 @@ const AdminDashboard = () => {
               </div>
               <div className="stat-card">
                 <div className="stat-card-head">
-                  <span className="stat-label">Active Sessions</span>
+                  <span className="stat-label">Active Users</span>
                   <span className="stat-dot"></span>
                 </div>
                 <div className="stat-value">{stats.activeUsers ?? 0}</div>
