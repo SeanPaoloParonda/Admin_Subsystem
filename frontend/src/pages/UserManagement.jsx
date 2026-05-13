@@ -48,6 +48,18 @@ const PasswordVisibilityIcon = ({ visible }) => (
   </svg>
 );
 
+const CloseIcon = () => (
+  <svg
+    width="18" height="18" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2.4"
+    strokeLinecap="round" strokeLinejoin="round"
+    aria-hidden="true" focusable="false"
+  >
+    <path d="M18 6 6 18" />
+    <path d="m6 6 12 12" />
+  </svg>
+);
+
 const UserManagementPage = () => {
   const location = useLocation();
   const highlightId = new URLSearchParams(location.search).get('highlight');
@@ -82,7 +94,9 @@ const UserManagementPage = () => {
 
   // Deactivate confirm modal state
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
-  const [deactivateTargets, setDeactivateTargets] = useState([]); // array of user objects
+  const [deactivateTargets, setDeactivateTargets] = useState([]);
+  const [showActivateModal, setShowActivateModal] = useState(false);
+  const [activateTargets, setActivateTargets] = useState([]);
 
   const fetchUsers = (subsystem = '') => {
     setLoading(true);
@@ -161,6 +175,13 @@ const UserManagementPage = () => {
 
   const [lastLoginSort, setLastLoginSort] = useState(null); // null | 'asc' | 'desc'
 
+  const getUserInitials = (user) => {
+    const displayName = getUserDisplayName(user);
+    const parts = displayName.trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return (parts[0] || user.username || 'U').slice(0, 2).toUpperCase();
+  };
+
   const filteredUsers = users
     .filter(user => {
       const roleName = user.Role?.name || '';
@@ -182,10 +203,12 @@ const UserManagementPage = () => {
   const formatLastLogin = (lastLogin) => {
     if (!lastLogin) return '-';
     const date = new Date(lastLogin);
-    return date.toLocaleString([], {
-      year: 'numeric', month: 'short', day: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    });
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
   };
 
   // ── Add User modal handlers ──────────────────────────────────────────────
@@ -356,29 +379,30 @@ const UserManagementPage = () => {
     }
   };
 
-  // Activate a single user directly (no confirm needed)
-  const handleActivateUser = async (user) => {
-    const token = localStorage.getItem('accessToken');
-    try {
-      await fetch(`/admin/api/users/${user.user_id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status: 'active' }),
-      });
-      fetchUsers(subsystemFilter);
-    } catch (err) {
-      console.error('Activate error:', err);
-    }
+  // Activate a single user — now shows confirm modal
+  const openActivateSingle = (user) => {
+    setActivateTargets([user]);
+    setShowActivateModal(true);
   };
 
-  // Activate all selected inactive users
-  const handleActivateBulk = async () => {
-    const token = localStorage.getItem('accessToken');
+  // Activate all selected inactive users — shows confirm modal
+  const openActivateBulk = () => {
     const targets = users.filter(u => selectedUsers.includes(u.user_id) && u.status !== 'active');
     if (targets.length === 0) return;
+    setActivateTargets(targets);
+    setShowActivateModal(true);
+  };
+
+  const closeActivateModal = () => {
+    setShowActivateModal(false);
+    setActivateTargets([]);
+  };
+
+  const handleConfirmActivate = async () => {
+    const token = localStorage.getItem('accessToken');
     try {
       await Promise.all(
-        targets.map(u =>
+        activateTargets.map(u =>
           fetch(`/admin/api/users/${u.user_id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -386,10 +410,11 @@ const UserManagementPage = () => {
           })
         )
       );
+      closeActivateModal();
       setSelectedUsers([]);
       fetchUsers(subsystemFilter);
     } catch (err) {
-      console.error('Bulk activate error:', err);
+      console.error('Activate error:', err);
     }
   };
 
@@ -468,8 +493,8 @@ const UserManagementPage = () => {
                     </button>
                   )}
                   {hasInactive && (
-                    <button className="activate-selected-btn" onClick={handleActivateBulk}>
-                      Activate Selected ({selectedObjs.filter(u => u.status !== 'active').length})
+                    <button className="activate-selected-btn" onClick={openActivateBulk}>
+                      Reactivate Selected ({selectedObjs.filter(u => u.status !== 'active').length})
                     </button>
                   )}
                 </>
@@ -566,8 +591,7 @@ const UserManagementPage = () => {
                           <span className="user-cell-title">{getUserDisplayName(user)}</span>
                           <span className="user-cell-meta">{user.username}</span>
                         </div>
-                      </td>
-                      <td>{user.username}</td>
+                      </td>                      <td>{user.username}</td>
                       <td>{user.Role?.name || '-'}</td>
                       <td>
                         <span className={`status-pill ${user.status || 'unknown'}`}>
@@ -585,7 +609,7 @@ const UserManagementPage = () => {
                         {user.status === 'active' ? (
                           <button className="action-btn action-deactivate" onClick={() => openDeactivateSingle(user)}>Deactivate</button>
                         ) : (
-                          <button className="action-btn action-activate" onClick={() => handleActivateUser(user)}>Activate</button>
+                          <button className="action-btn action-activate" onClick={() => openActivateSingle(user)}>Reactivate</button>
                         )}                      </td>
                     </tr>
                   ))}
@@ -602,7 +626,9 @@ const UserManagementPage = () => {
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Add User</h2>
-              <button className="modal-close" onClick={closeAddModal}>×</button>
+              <button className="modal-close" onClick={closeAddModal} aria-label="Close modal">
+                <CloseIcon />
+              </button>
             </div>
 
             <form className="modal-form" onSubmit={handleAddUserSubmit}>
@@ -735,7 +761,9 @@ const UserManagementPage = () => {
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Edit User</h2>
-              <button className="modal-close" onClick={closeEditModal}>×</button>
+              <button className="modal-close" onClick={closeEditModal} aria-label="Close modal">
+                <CloseIcon />
+              </button>
             </div>
 
             <form className="modal-form" onSubmit={handleEditUserSubmit}>
@@ -917,6 +945,40 @@ const UserManagementPage = () => {
             <div className="modal-actions">
               <button className="modal-cancel" onClick={closeDeactivateModal}>Cancel</button>
               <button className="modal-deactivate" onClick={handleConfirmDeactivate}>Deactivate</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Activate Confirm Modal ─────────────────────────────────────────── */}
+      {showActivateModal && (
+        <div className="modal-backdrop" onClick={closeActivateModal}>
+          <div className="modal-content deactivate-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Reactivate {activateTargets.length === 1 ? 'User' : 'Users'}?</h2>
+              <button className="modal-close" onClick={closeActivateModal}>×</button>
+            </div>
+            <div className="deactivate-body">
+              {activateTargets.length === 1 ? (
+                <>
+                  <p className="deactivate-main">
+                    Are you sure you want to reactivate the account for{' '}
+                    <strong>{getUserDisplayName(activateTargets[0])}</strong>?
+                  </p>
+                  <p className="deactivate-sub">This will restore the user's access to the system.</p>
+                </>
+              ) : (
+                <>
+                  <p className="deactivate-main">
+                    You are about to reactivate <strong>{activateTargets.length} user accounts</strong>.
+                  </p>
+                  <p className="deactivate-sub">This will restore access for all selected users.</p>
+                </>
+              )}
+            </div>
+            <div className="modal-actions">
+              <button className="modal-cancel" onClick={closeActivateModal}>Cancel</button>
+              <button className="modal-create" onClick={handleConfirmActivate}>Reactivate</button>
             </div>
           </div>
         </div>

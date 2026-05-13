@@ -384,3 +384,11 @@
   text-underline-offset: 2px;
 }
 .user-name-link:hover { color: #1a9bb6; }
+
+/* Page indicator between Previous/Next */
+.page-indicator {
+  font-size: 0.85rem;
+  color: #627d98;
+  padding: 0 4px;
+  white-space: nowrap;
+}

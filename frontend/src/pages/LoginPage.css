@@ -1,6 +1,6 @@
 /* Use Inter font globally */
 body, html, #root, .login-bg, .login-card, .login-logo, .login-form, 
-.login-form input, .login-form button, .login-error, .login-forgot, .login-subtitle {
+.login-form input, .login-form button, .login-error, .login-subtitle {
   font-family: 'Inter', Arial, Helvetica, sans-serif !important;
 }
 
@@ -31,8 +31,8 @@ body, html, #root, .login-bg, .login-card, .login-logo, .login-form,
   border-radius: 12px;
   box-shadow: 0 4px 32px rgba(0,0,0,0.12);
   padding: 2.5rem 1.1rem 2rem 1.1rem;
-  min-width: 350px;
-  max-width: 95vw;
+  width: 390px;
+  max-width: calc(100vw - 32px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -44,9 +44,7 @@ body, html, #root, .login-bg, .login-card, .login-logo, .login-form,
   align-items: center;
   margin-bottom: 1.5rem;
 }
-.login-logo img {
-  margin-bottom: 0.5rem;
-}
+.login-logo img { margin-bottom: 0.5rem; }
 .login-logo h2 {
   margin: 0;
   font-weight: 700;
@@ -61,7 +59,7 @@ body, html, #root, .login-bg, .login-card, .login-logo, .login-form,
 
 .login-form {
   width: 100%;
-  max-width: 310px;
+  max-width: 330px;
   margin: 0 auto;
 }
 
@@ -78,16 +76,27 @@ body, html, #root, .login-bg, .login-card, .login-logo, .login-form,
   padding: 0 0.75rem;
   transition: border-color 0.2s;
 }
-.input-group:focus-within {
-  border-color: #1a9bb6;
-}
+.input-group:focus-within { border-color: #1a9bb6; }
+
+/* SVG icon inside input */
 .input-icon {
   width: 20px;
   height: 20px;
+  color: #9aa5ad;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   opacity: 0.6;
   margin-right: 0.5rem;
   flex-shrink: 0;
 }
+.input-group:focus-within .input-icon {
+  color: #1a9bb6;
+  opacity: 0.9;
+}
+
 .login-form input {
   flex: 1;
   padding: 0.75rem 0;
@@ -96,25 +105,6 @@ body, html, #root, .login-bg, .login-card, .login-logo, .login-form,
   font-size: 1rem;
   outline: none;
   background: transparent;
-}
-.login-form input:focus {
-  border-color: #1a9bb6;
-}
-
-/* Forgot password link styled as button */
-.link-button {
-  background: none;
-  border: none;
-  color: #1a9bb6;
-  text-decoration: none;
-  cursor: pointer;
-  font-size: 0.95rem;
-  padding: 0;
-}
-
-.login-forgot {
-  text-align: right;
-  margin-bottom: 1rem;
 }
 
 .login-error {
@@ -139,7 +129,7 @@ body, html, #root, .login-bg, .login-card, .login-logo, .login-form,
   cursor: pointer;
   transition: background 0.2s;
   box-sizing: border-box;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.35rem;
 }
 .login-form button:disabled {
   background: #b2e0ea;

@@ -33,6 +33,7 @@ const ServiceCatalog = () => {
   const [form, setForm] = useState({ service_name: '', category: '', base_cost: '', is_available: true });
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
+  const [deactivateService, setDeactivateService] = useState(null);
 
   // Actions dropdown
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -155,14 +156,23 @@ const ServiceCatalog = () => {
     }
   };
 
-  const handleDeactivate = async (service) => {
+  const openDeactivateModal = (service) => {
     setOpenMenuId(null);
-    if (!window.confirm(`Deactivate "${service.service_name}"?`)) return;
+    setDeactivateService(service);
+  };
+
+  const closeDeactivateModal = () => {
+    setDeactivateService(null);
+  };
+
+  const handleDeactivate = async () => {
+    if (!deactivateService) return;
     try {
-      await fetch(`/admin/api/reference/${service.service_id}/deactivate`, {
+      await fetch(`/admin/api/reference/${deactivateService.service_id}/deactivate`, {
         method: 'PATCH',
         headers,
       });
+      closeDeactivateModal();
       fetchServices(page);
     } catch (err) {
       alert('Failed to deactivate: ' + err.message);
@@ -293,7 +303,7 @@ const ServiceCatalog = () => {
                             <div className="actions-menu">
                               <button onClick={() => openEditModal(service)}>Edit</button>
                               {service.is_available && (
-                                <button className="danger" onClick={() => handleDeactivate(service)}>Deactivate</button>
+                                <button className="danger" onClick={() => openDeactivateModal(service)}>Deactivate</button>
                               )}
                             </div>
                           )}
@@ -386,6 +396,28 @@ const ServiceCatalog = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Deactivate Confirm Modal */}
+      {deactivateService && (
+        <div className="modal-backdrop" onClick={closeDeactivateModal}>
+          <div className="modal-content deactivate-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Deactivate Service?</h2>
+              <button className="modal-close" onClick={closeDeactivateModal}>×</button>
+            </div>
+            <div className="deactivate-body">
+              <p className="deactivate-main">
+                Are you sure you want to deactivate{' '}
+                <strong>{deactivateService.service_name}</strong>?
+              </p>
+              <p className="deactivate-sub">This will mark the service as unavailable in the catalog.</p>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="modal-cancel" onClick={closeDeactivateModal}>Cancel</button>
+              <button type="button" className="modal-deactivate" onClick={handleDeactivate}>Deactivate</button>
+            </div>
           </div>
         </div>
       )}

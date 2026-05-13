@@ -21,9 +21,13 @@ const getActionColor = (action = '') => {
 const formatTimestamp = (ts) => {
   if (!ts) return '-';
   const d = new Date(ts);
-  const date = d.toLocaleDateString('en-CA'); // YYYY-MM-DD
-  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-  return `${date} ${time}`;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
 };
 
 const getUserDisplay = (log) => {
@@ -71,7 +75,14 @@ const AuditLogs = () => {
       if (logSource === 'customer') {
         // Fetch all from Customer Support external API — no server-side pagination
         const res = await fetch('/admin/api/audit/external/customer', { headers });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          setAllExternalLogs([]);
+          setLogs([]);
+          setTotal(0);
+          setTotalPages(1);
+          setError('Customer Support audit logs are unavailable.');
+          return;
+        }
         const json = await res.json();
         const all = json.logs || [];
         setAllExternalLogs(all);
@@ -86,6 +97,7 @@ const AuditLogs = () => {
           sortOrder,
           ...(actionType && { action_type: actionType }),
           ...(subsystem  && { subsystem }),
+          ...(search     && { search }),
           ...(startDate  && { startDate }),
           ...(endDate    && { endDate }),
         });
@@ -97,7 +109,13 @@ const AuditLogs = () => {
         setTotalPages(data.totalPages || 1);
       }
     } catch (err) {
-      setError(err.message);
+      if (logSource === 'customer') {
+        setError('Customer Support audit logs are unavailable.');
+      } else if (err.message === 'Failed to fetch') {
+        setError('Audit logs are unavailable. Please check if the backend server is running.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -122,12 +140,29 @@ const AuditLogs = () => {
     fetchLogs(newPage);
   };
 
+  // Search across multiple fields for both internal and external logs
+  const matchesSearch = (log) => {
+    if (!search) return true;
+    const term = search.toLowerCase();
+    const u = getUserDisplay(log);
+    return [
+      log.action_type,
+      log.details,
+      log.ip_addr,
+      log.user_id,
+      u.name,
+      u.sub,
+      log.user?.username,
+      log.user?.actorRole,
+      log.user?.title,
+      log.user?.inquiryId,
+    ].filter(Boolean).some(value => String(value).toLowerCase().includes(term));
+  };
+
   // For external logs: apply client-side filters on the full dataset
   const displayedLogs = logSource === 'customer'
     ? allExternalLogs.filter(log => {
-        const matchSearch = !search ||
-          (log.action_type || '').toLowerCase().includes(search.toLowerCase()) ||
-          (log.details || '').toLowerCase().includes(search.toLowerCase());
+        const matchSearch = matchesSearch(log);
         const matchAction = !actionType || log.action_type === actionType;
         const logDate = log.created_at ? new Date(log.created_at) : null;
         const matchStart = !startDate || (logDate && logDate >= new Date(startDate));
@@ -138,7 +173,7 @@ const AuditLogs = () => {
         const db = new Date(b.created_at || 0);
         return sortOrder === 'ASC' ? da - db : db - da;
       })
-    : logs;
+    : logs.filter(matchesSearch);
 
   // Distinct action types from external logs for the dropdown
   const externalActionTypes = [...new Set(allExternalLogs.map(l => l.action_type).filter(Boolean))].sort();
@@ -357,6 +392,7 @@ const AuditLogs = () => {
                   {logSource === 'internal' && (
                     <>
                       <button className="page-btn" disabled={page <= 1} onClick={() => handlePageChange(page - 1)}>Previous</button>
+                      <span className="page-indicator">Page {page} of {totalPages}</span>
                       <button className="page-btn active-page" disabled={page >= totalPages} onClick={() => handlePageChange(page + 1)}>Next</button>
                     </>
                   )}

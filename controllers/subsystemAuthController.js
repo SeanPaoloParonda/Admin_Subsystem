@@ -1,54 +1,66 @@
+// ── What this file does ──────────────────────────────────────────────────────
+// This file handles authentication requests from OTHER subsystems
+// (e.g., Patient, Billing, Staff Management) that need to log in their users
+// using the Admin subsystem's central user database.
+//
+// Instead of each subsystem maintaining its own user database, all users
+// are stored here in the Admin subsystem. Other subsystems call this endpoint
+// to authenticate their users and receive a JWT token.
+//
+// This is different from the regular login (authController.js) in two ways:
+//   1. The calling subsystem must prove its identity using a shared API key
+//      (X-Subsystem-Key header), not a user JWT.
+//   2. The user's role must belong to the same subsystem that is making the request.
+//      A Patient subsystem cannot log in a Billing user.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Import the models needed for authentication
 const User = require('../models/user');
 const Role = require('../models/role');
 const Permission = require('../models/permission');
 const AuditLog = require('../models/auditLog');
+
+// comparePassword checks if the submitted password matches the stored hash
 const { comparePassword } = require('../utils/passwordUtils');
+
+// generateToken creates a short-lived JWT access token (24 hours)
 const { generateToken } = require('../utils/tokenUtils');
 
 /**
- * Cross-subsystem login
+ * subsystemLogin
  *
- * Other subsystems POST to /admin/api/auth/subsystem-login with:
+ * Authenticates a user on behalf of another subsystem.
+ *
+ * The calling subsystem must POST to /admin/api/auth/subsystem-login with:
  *   Headers:
- *     X-Subsystem-Key: <shared secret>
+ *     X-Subsystem-Key: <shared secret from .env>
  *     Content-Type: application/json
  *   Body:
  *     { "username": "...", "password": "...", "subsystem": "Patient" }
  *
- * Rules:
- *   - The requesting subsystem must declare itself via the "subsystem" field in the body
- *   - The user's role must belong to that same subsystem — a Patient user cannot
- *     receive a Billing token, and a Billing subsystem cannot log in a Patient user
- *   - The issued token's subsystem is locked to the declared subsystem
- *   - No refresh token is issued — token refresh is for Admin subsystem users only
+ * The "subsystem" field declares which subsystem is making the request.
+ * The user's role must belong to that same subsystem.
  *
- * Response (200):
- *   {
- *     "accessToken": "...",
- *     "user": {
- *       "user_id": "...",
- *       "username": "...",
- *       "role": "...",
- *       "subsystem": "...",
- *       "permissions": ["Create", "View", "Patch"],
- *       "status": "active"
- *     }
- *   }
+ * Returns a JWT access token (no refresh token — that's Admin-only).
  */
 const subsystemLogin = async (req, res) => {
   try {
-    // ── 1. Verify the subsystem API key ──────────────────────────────────────
+    // ── Step 1: Verify the subsystem API key ──────────────────────────────────
+    // The calling subsystem must include the shared secret in the X-Subsystem-Key header.
+    // This proves the request is coming from a trusted subsystem, not a random caller.
     const providedKey = req.headers['x-subsystem-key'];
     const expectedKey = process.env.SUBSYSTEM_API_KEY;
 
     if (!expectedKey) {
+      // The secret is not configured on the server — this is a setup error
       console.error('SUBSYSTEM_API_KEY is not set in environment');
       return res.status(500).json({ message: 'Server misconfiguration: subsystem key not set' });
     }
 
     if (!providedKey || providedKey !== expectedKey) {
+      // The key is missing or wrong — log the attempt and deny access
       await AuditLog.create({
-        user_id: '00000000-0000-0000-0000-000000000000',
+        user_id: '00000000-0000-0000-0000-000000000000', // placeholder for unknown caller
         action_type: 'SUBSYSTEM_AUTH_FAILED',
         details: `Invalid or missing X-Subsystem-Key from IP ${req.ip}`,
         ip_addr: req.ip,
@@ -57,19 +69,24 @@ const subsystemLogin = async (req, res) => {
       return res.status(401).json({ message: 'Invalid subsystem key' });
     }
 
-    // ── 2. Validate request body ─────────────────────────────────────────────
+    // ── Step 2: Validate the request body ────────────────────────────────────
     const { username, password, subsystem } = req.body;
+
+    // username and password are required
     if (!username || !password) {
       return res.status(400).json({ message: 'username and password are required' });
     }
+
+    // subsystem is required — the calling subsystem must declare who they are
     if (!subsystem || typeof subsystem !== 'string') {
       return res.status(400).json({ message: 'subsystem is required — declare which subsystem is making this request' });
     }
 
-    // ── 3. Find the user ─────────────────────────────────────────────────────
+    // ── Step 3: Find the user ─────────────────────────────────────────────────
     const user = await User.findOne({ where: { username } });
 
     if (!user) {
+      // Username not found — log the failed attempt and return a generic error
       await AuditLog.create({
         user_id: '00000000-0000-0000-0000-000000000000',
         action_type: 'SUBSYSTEM_LOGIN_FAILED',
@@ -77,10 +94,12 @@ const subsystemLogin = async (req, res) => {
         ip_addr: req.ip,
         subsystem
       }).catch(err => console.error('Audit log failed (SUBSYSTEM_LOGIN_FAILED):', err.message));
+      // Return the same generic error as wrong password — don't reveal if the username exists
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
-    // ── 4. Check account status ──────────────────────────────────────────────
+    // ── Step 4: Check account status ─────────────────────────────────────────
+    // Inactive accounts cannot log in from any subsystem
     if (user.status !== 'active') {
       await AuditLog.create({
         user_id: user.user_id,
@@ -92,7 +111,8 @@ const subsystemLogin = async (req, res) => {
       return res.status(401).json({ message: 'Account is inactive' });
     }
 
-    // ── 5. Verify password ───────────────────────────────────────────────────
+    // ── Step 5: Verify the password ───────────────────────────────────────────
+    // Compare the submitted password against the stored bcrypt hash
     const isMatch = await comparePassword(password, user.pwd_hash);
     if (!isMatch) {
       await AuditLog.create({
@@ -105,7 +125,7 @@ const subsystemLogin = async (req, res) => {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
-    // ── 6. Load role + permissions ───────────────────────────────────────────
+    // ── Step 6: Load the user's role and permissions ──────────────────────────
     let roleName = 'User';
     let roleSubsystem = '';
     let rolePermissions = [];
@@ -115,21 +135,24 @@ const subsystemLogin = async (req, res) => {
         attributes: ['name', 'subsystem'],
         include: [{
           model: Permission,
-          through: { attributes: [] },
-          attributes: ['action']
+          through: { attributes: [] }, // don't include join table columns
+          attributes: ['action']        // only fetch the action name
         }]
       });
       if (role) {
         roleName = role.name;
         roleSubsystem = role.subsystem;
+        // Build a simple array of permission strings: ['Create', 'View', 'Patch']
         rolePermissions = (role.Permissions || []).map(p => p.action);
       }
     }
 
-    // ── 7. Enforce subsystem boundary ────────────────────────────────────────
-    // The user's role subsystem must match the declared subsystem.
-    // This prevents a Patient subsystem from logging in a Billing user,
-    // and prevents a user from getting a token scoped to the wrong subsystem.
+    // ── Step 7: Enforce the subsystem boundary ────────────────────────────────
+    // The user's role subsystem must match the subsystem declared in the request.
+    //
+    // Example: If the Patient subsystem calls this endpoint with subsystem='Patient',
+    // but the user's role belongs to 'Billing', the login is denied.
+    // This prevents cross-subsystem access — a Billing user cannot get a Patient token.
     if (roleSubsystem !== subsystem) {
       await AuditLog.create({
         user_id: user.user_id,
@@ -138,11 +161,13 @@ const subsystemLogin = async (req, res) => {
         ip_addr: req.ip,
         subsystem
       }).catch(err => console.error('Audit log failed (SUBSYSTEM_LOGIN_FAILED):', err.message));
-      // Return generic message — don't reveal which subsystem the user belongs to
+      // Return a generic message — don't reveal which subsystem the user actually belongs to
       return res.status(403).json({ message: 'Access denied: user does not belong to this subsystem' });
     }
 
-    // ── 8. Build token payload ───────────────────────────────────────────────
+    // ── Step 8: Build the token payload ──────────────────────────────────────
+    // This is the data embedded inside the JWT token.
+    // The subsystem is locked to the user's actual role subsystem.
     const payload = {
       user_id:     user.user_id,
       username:    user.username,
@@ -152,13 +177,13 @@ const subsystemLogin = async (req, res) => {
       permissions: rolePermissions
     };
 
-    // No refresh token — token refresh is for Admin subsystem users only
+    // Generate the access token — no refresh token for non-Admin subsystems
     const accessToken = generateToken(payload);
 
-    // Update last_login
+    // Update the last_login timestamp
     await user.update({ last_login: new Date() }).catch(err => console.error('last_login update failed:', err.message));
 
-    // ── 9. Audit log ─────────────────────────────────────────────────────────
+    // ── Step 9: Record the successful login in the audit log ──────────────────
     await AuditLog.create({
       user_id:     user.user_id,
       action_type: 'SUBSYSTEM_LOGIN_SUCCESS',
@@ -167,7 +192,7 @@ const subsystemLogin = async (req, res) => {
       subsystem
     }).catch(err => console.error('Audit log failed (SUBSYSTEM_LOGIN_SUCCESS):', err.message));
 
-    // ── 10. Respond ──────────────────────────────────────────────────────────
+    // ── Step 10: Send the response ────────────────────────────────────────────
     return res.json({
       accessToken,
       user: {
@@ -175,7 +200,7 @@ const subsystemLogin = async (req, res) => {
         username:  user.username,
         role:      roleName,
         subsystem: roleSubsystem,
-        staff_id:  user.staff_id || null,
+        staff_id:  user.staff_id || null, // include staff_id for Staff Management subsystem
         status:    user.status
       }
     });
@@ -186,4 +211,5 @@ const subsystemLogin = async (req, res) => {
   }
 };
 
+// Export the function for use in the auth routes
 module.exports = { subsystemLogin };

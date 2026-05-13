@@ -18,7 +18,7 @@ const subsystemMap = [
 const RolesManagement = () => {
   const [roles, setRoles] = useState([]);
   const [search, setSearch] = useState('');
-  const [subsystem, setSubsystem] = useState('Admin');
+  const [subsystem, setSubsystem] = useState('');
   const [selectedRoles, setSelectedRoles] = useState([]);
   const [showAddRoleModal, setShowAddRoleModal] = useState(false);
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
@@ -32,6 +32,7 @@ const RolesManagement = () => {
     patch: false,
     delete: false
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -51,7 +52,8 @@ const RolesManagement = () => {
         const roleData = data.roles || [];
         setRoles(roleData);
       })
-      .catch(err => console.error('Failed to fetch roles:', err));
+      .catch(err => console.error('Failed to fetch roles:', err))
+      .finally(() => setLoading(false));
   }, []);
 
   const filteredRoles = roles
@@ -322,7 +324,7 @@ const RolesManagement = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredRoles.map(role => (
+                {!loading && filteredRoles.map(role => (
                   <tr key={role.role_id} className={selectedRoles.includes(role.role_id) ? 'row-selected' : ''}>
                     <td className="select-cell">
                       <input
@@ -365,7 +367,13 @@ const RolesManagement = () => {
                     <td colSpan="5" className="empty-state">No roles found.</td>
                   </tr>
                 )}
-              </tbody>
+                {loading && (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: '#627d98' }}>
+                      Loading roles...
+                    </td>
+                  </tr>
+                )}              </tbody>
             </table>
           </div>
         </div>
